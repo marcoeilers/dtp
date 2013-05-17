@@ -1,0 +1,5 @@
+# ignore latex byproducts
+report/report.aux
+report/report.fdb_latexmk
+report/report.log
+report/report.pdf
