@@ -3,3 +3,7 @@ report/report.aux
 report/report.fdb_latexmk
 report/report.log
 report/report.pdf
+
+# ignore platform compiled basics
+src/Basics.glob
+src/Basics.vo
