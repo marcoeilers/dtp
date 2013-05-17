@@ -88,7 +88,9 @@ Definition example_board_transpose : board :=
 Definition rows (b:board) : list row := b.
 
 (* Check rows by example *)
-Example test_rows_id : rows example_board = example_board.
+Example test_rows_id_1 : rows example_board = example_board.
+Proof. reflexivity. Qed.
+Example test_rows_id_2 : rows (rows example_board) = example_board.
 Proof. reflexivity. Qed.
 
 (* Get the columns of a board *)
@@ -102,8 +104,10 @@ Fixpoint cols {A:Type} (l:list (list A)) : list (list A) :=
 (* Check cols by example *)
 Example test_cols_transpose : cols example_board = example_board_transpose.
 Proof. reflexivity. Qed.
+Example test_cold_id : cols (cols example_board) = example_board.
+Proof. reflexivity. Qed.
 
-(* Uses for the extraction of boxes from a board *)
+(* Used for the extraction of boxes from a board *)
 Fixpoint group {A:Type} (l:list A) := group_by boxsize l.
 
 (* Get the boxes of a board *)
