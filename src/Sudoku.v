@@ -30,10 +30,17 @@ Fixpoint ungroup {A:Type} (l:list (list A)) : list A :=
 
 (* Combines two lists by prepending the elements of one list
    to each sublist of the other list *)
-Fixpoint combine_prepend {A:Type} (l : list A) (l' : list (list A)) : list (list A) :=
+Fixpoint combine_prepend {A:Type} (l:list A) (l':list (list A)) : list (list A) :=
   match l, l' with
     | x::xs, y::ys => (x :: y) :: (combine_prepend xs ys)
     | _, _ => nil
+  end.
+
+(* As per http://coq.inria.fr/V8.1/stdlib/Coq.Lists.List.html *)
+Fixpoint filter {A:Type} (f:A -> bool) (l:list A) : list A := 
+  match l with 
+    | nil => nil
+    | x :: l => if f x then x::(filter f l) else filter f l
   end.
 
 (* Ascii characters for cell values *)
@@ -80,12 +87,15 @@ Definition example_board_transpose : board :=
     [ "8", "8", "8", "8", "8", "8", "8", "8", "8" ],
     [ "9", "9", "9", "9", "9", "9", "9", "9", "9" ] ].
 
+(* All characters defined *)
+Local Close Scope char_scope.
+
 (*
  * Operations on boards
  *)
 
 (* Get the rows of a board -- identity since a board is a list of rows *)
-Definition rows (b:board) : list row := b.
+Definition rows {A:Type} (b:list (list A)) : list (list A) := b.
 
 (* Check rows by example *)
 Example test_rows_id_1 : rows example_board = example_board.
@@ -97,7 +107,7 @@ Proof. reflexivity. Qed.
 Fixpoint cols {A:Type} (l:list (list A)) : list (list A) :=
   match l with
     | [] => []
-    | [xs] => map (fun x : A => [x]) xs
+    | [xs] => map (fun x:A => [x]) xs
     | xs :: xss => combine_prepend xs (cols xss)
   end.
 
@@ -108,16 +118,66 @@ Example test_cold_id : cols (cols example_board) = example_board.
 Proof. reflexivity. Qed.
 
 (* Used for the extraction of boxes from a board *)
-Fixpoint group {A:Type} (l:list A) := group_by boxsize l.
+Definition group {A:Type} (l:list A) := group_by boxsize l.
 
 (* Get the boxes of a board *)
-Fixpoint boxes (b:board) : (list (list cellval)) :=
+Definition boxes {A:Type} (b:list (list A)) : list (list A) :=
   map ungroup (ungroup (map cols (group (map group b)))).
 
 (* Check boxes identity *)
 Example test_boxes_id : boxes (boxes example_board) = example_board.
 Proof. reflexivity. Qed.
 
-Local Close Scope char_scope.
+(*
+ * The actual solver
+ *)
+
+Definition Interface_eq x y := if ascii_dec x y then true else false.
+
+Fixpoint member (a:cellval) (l:list cellval) : bool :=
+  match l with
+    | [] => false
+    | x :: xs => if Interface_eq x a then true else member a xs
+  end.
+
+Definition matrix_choices := list (list (list cellval)).
+
+Definition choose (c:cellval) : list cellval :=
+  if blank c then cellvals else [c].
+
+Definition choices (b:board) : matrix_choices :=
+  map (map choose) b.
+
+Definition single {A:Type} (l:list A) : bool :=
+  match l with | [x] => true | _ => false end.
+
+Definition fixed (l:list (list cellval)) : list cellval :=
+  ungroup (filter single l).
+
+(* fs : fixed entries, cs : choices
+   removes a list of fixed entries from the list of choices, used below *)
+Definition delete (fs:list cellval) (cs:list cellval) : list cellval :=
+  filter (fun x:cellval => member x fs) cs.
+  
+(* fs : fixed entries, cs : choices
+   removes a list of fixed entries from the list of choices *)
+Definition remove (fs:list cellval) (cs:list cellval) : list cellval :=
+  if single cs then cs else delete fs cs.
+
+Definition reduce (l:list (list cellval)) : list (list cellval) :=
+  map (remove (fixed l)) l.
+
+Definition prune_by (f:matrix_choices -> matrix_choices) : matrix_choices -> matrix_choices :=
+  fun cs:matrix_choices => f (map reduce (f cs)).
+
+Definition prune (choices:matrix_choices) : matrix_choices :=
+  prune_by boxes (prune_by cols (prune_by rows choices)).
+
+(* TODO
+Definition search
+
+Definition sudoku (b:board) : list board :=
+  map (map hd) (search (prune (choices b))).
+*)
 
 End Sudoku.
