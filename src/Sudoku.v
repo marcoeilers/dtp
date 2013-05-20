@@ -43,6 +43,27 @@ Fixpoint filter {A:Type} (f:A -> bool) (l:list A) : list A :=
     | x :: l => if f x then x::(filter f l) else filter f l
   end.
 
+(* Determines if any element of the list satisfies the predicate *)
+Fixpoint any {A:Type} (f:A -> bool) (l:list A) : bool :=
+  match l with
+    | [] => false
+    | x :: xs => if f x then true else any f xs
+  end.
+
+(* Test whether a list is empty *)
+Definition null {A:Type} (l:list A) : bool :=
+  match l with
+    | [] => true
+    | _ => false
+  end.
+
+(* Determines if all elements of the list satisfy the predicate *)
+Fixpoint all {A:Type} (f:A -> bool) (l:list A) : bool :=
+  match l with
+    | [] => true
+    | x :: xs => if f x then all f xs else false
+  end.
+
 (* Ascii characters for cell values *)
 Require Import Ascii.
 
@@ -173,11 +194,34 @@ Definition prune_by (f:matrix_choices -> matrix_choices) : matrix_choices -> mat
 Definition prune (choices:matrix_choices) : matrix_choices :=
   prune_by boxes (prune_by cols (prune_by rows choices)).
 
-(* TODO
-Definition search
+Definition void (cm:matrix_choices) : bool :=
+  any (any null) cm.
+
+Fixpoint nodups (l:list cellval) : bool :=
+  match l with
+    | [] => true
+    | x :: xs => if member x xs then false else nodups xs
+  end.
+
+Definition safe (cm:matrix_choices) : bool :=
+  andb3
+    (all (fun xs:list (list cellval) => nodups (fixed xs)) (rows cm))
+    (all (fun xs:list (list cellval) => nodups (fixed xs)) (cols cm))
+    (all (fun xs:list (list cellval) => nodups (fixed xs)) (boxes cm)).
+
+Definition blocked (cm:matrix_choices) : bool :=
+  andb (void cm) (negb (safe cm)).
+
+Definition expand (cm:matrix_choices) : list matrix_choices :=
+  (* TODO *) [cm].
+
+(* TODO illformed recursion over cm *)
+Fixpoint search (cm:matrix_choices) : list matrix_choices :=
+  if blocked cm then []
+  else if all (all single) cm then [cm]
+  else ungroup (map (fun x:matrix_choices => search (prune x)) (expand cm)).
 
 Definition sudoku (b:board) : list board :=
   map (map hd) (search (prune (choices b))).
-*)
 
 End Sudoku.
