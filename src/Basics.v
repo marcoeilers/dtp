@@ -196,11 +196,14 @@ Example test_nandb4:               (nandb true true) = false.
 
 (** **** Exercise: 1 star (andb3) *)
 Definition andb3 (b1:bool) (b2:bool) (b3:bool) : bool :=
-  (* FILL IN HERE *) admit.
+  match b1, b2, b3 with
+    | true, true, true => true
+    | _, _, _ => false
+  end.
 
 Example test_andb31:                 (andb3 true true true) = true.
 (* FILL IN HERE *) Admitted.
-Example test_andb32:                 (andb3 false true true) = false.
+Example test_2:                 (andb3 false true true) = false.
 (* FILL IN HERE *) Admitted.
 Example test_andb33:                 (andb3 true false true) = false.
 (* FILL IN HERE *) Admitted.
@@ -526,7 +529,11 @@ Proof. simpl. reflexivity.  Qed.
     simple, elegant solution for which [simpl] suffices. *)
 
 Definition blt_nat (n m : nat) : bool :=
-  (* FILL IN HERE *) admit.
+  match ble_nat n m with
+    | false => false
+    | true => negb (ble_nat m n)
+  end.
+  
 
 Example test_blt_nat1:             (blt_nat 2 2) = false.
 (* FILL IN HERE *) Admitted.
