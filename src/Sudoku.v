@@ -108,6 +108,17 @@ Definition example_board_transpose : board :=
     [ "8", "8", "8", "8", "8", "8", "8", "8", "8" ],
     [ "9", "9", "9", "9", "9", "9", "9", "9", "9" ] ].
 
+Definition test_board : board :=
+  [ [ "2", ".", ".", ".", ".", "1", ".", "3", "8"],
+    [ ".", ".", ".", ".", ".", ".", ".", ".", "5"],
+    [ ".", "7", ".", ".", ".", "6", ".", ".", "."],
+    [ ".", ".", ".", ".", ".", ".", ".", "1", "3"],
+    [ ".", "9", "8", "1", ".", ".", "2", "5", "7"],
+    [ "3", "1", ".", ".", ".", ".", "8", ".", "."],
+    [ "9", ".", ".", "8", ".", ".", ".", "2", "."],
+    [ ".", "5", ".", ".", "6", "9", "7", "8", "4"],
+    [ "4", ".", ".", "2", "5", ".", ".", ".", "."] ].
+
 (* All characters defined *)
 Local Close Scope char_scope.
 
@@ -212,16 +223,60 @@ Definition safe (cm:matrix_choices) : bool :=
 Definition blocked (cm:matrix_choices) : bool :=
   andb (void cm) (negb (safe cm)).
 
+Fixpoint minimum (l:list nat) (m:nat) : nat :=
+  match l with
+  | nil => m
+  | x::xs => if blt_nat x m then minimum xs x else minimum xs m
+  end.
+
+Fixpoint list_size {A:Type} (l:list A) : nat :=
+  match l with
+  | nil => 0
+  | x::xs => S (list_size xs)
+  end.
+
+Definition minchoice (cm:matrix_choices) : nat :=
+  minimum (filter (fun n:nat => blt_nat 1 n) (ungroup (map (map list_size) cm))) 0.
+
+Definition best {A:Type} (m:nat) (cs:list A) : bool :=
+  beq_nat m (list_size cs).
+
+Fixpoint break {A:Type} (f: A -> bool) (l:list A) : (list A * list A) :=
+  match l with
+  | nil => (nil, nil)
+  | x::xs => if f x then (nil, l) 
+                    else let (a,b) := (break f xs) in (x::a, b)
+  end.
+
+Eval simpl in break (fun x => beq_nat 3 x) [1,2,3,4,5].
+
 Definition expand (cm:matrix_choices) : list matrix_choices :=
-  (* TODO *) [cm].
+  let n := minchoice cm in
+  let (rows1,rows2') := (break (fun y => any (fun x => best n x) y) cm) in
+  match rows2' with
+    | nil => nil (* should never happen *)
+    | row::rows2 => 
+        let (row1, row2') := break (fun x => best n x ) row in
+        match row2' with
+          | nil => nil (* should never happen *)
+          | cs::row2 => map (fun c => rows1 ++ [row1 ++ [c]::row2] ++ rows2) cs
+        end
+  end.
 
 (* TODO illformed recursion over cm *)
-Fixpoint search (cm:matrix_choices) : list matrix_choices :=
+Fixpoint search (n: nat) (cm:matrix_choices) : list matrix_choices :=
+  match n with
+  | 0 => [cm]
+  | S n' =>
   if blocked cm then []
   else if all (all single) cm then [cm]
-  else ungroup (map (fun x:matrix_choices => search (prune x)) (expand cm)).
+  else ungroup (map (fun x:matrix_choices => search n' (prune x)) (expand cm))
+  end.
 
 Definition sudoku (b:board) : list board :=
-  map (map hd) (search (prune (choices b))).
+  map (map (fun l => hd [] l)) (search 1000 (prune (choices b))).
+
+
+
 
 End Sudoku.
