@@ -51,7 +51,7 @@ Fixpoint any {A:Type} (f:A -> bool) (l:list A) : bool :=
   end.
 
 (* Test whether a list is empty *)
-Definition null {A:Type} (l:list A) : bool :=
+Fixpoint null {A:Type} (l:list A) : bool :=
   match l with
     | [] => true
     | _ => false
@@ -127,7 +127,7 @@ Local Close Scope char_scope.
  *)
 
 (* Get the rows of a board -- identity since a board is a list of rows *)
-Definition rows {A:Type} (b:list (list A)) : list (list A) := b.
+Fixpoint rows {A:Type} (b:list (list A)) : list (list A) := b.
 
 (* Check rows by example *)
 Example test_rows_id_1 : rows example_board = example_board.
@@ -150,10 +150,10 @@ Example test_cold_id : cols (cols example_board) = example_board.
 Proof. reflexivity. Qed.
 
 (* Used for the extraction of boxes from a board *)
-Definition group {A:Type} (l:list A) := group_by boxsize l.
+Fixpoint group {A:Type} (l:list A) := group_by boxsize l.
 
 (* Get the boxes of a board *)
-Definition boxes {A:Type} (b:list (list A)) : list (list A) :=
+Fixpoint boxes {A:Type} (b:list (list A)) : list (list A) :=
   map ungroup (ungroup (map cols (group (map group b)))).
 
 (* Check boxes identity *)
@@ -174,38 +174,38 @@ Fixpoint member (a:cellval) (l:list cellval) : bool :=
 
 Definition matrix_choices := list (list (list cellval)).
 
-Definition choose (c:cellval) : list cellval :=
+Fixpoint choose (c:cellval) : list cellval :=
   if blank c then cellvals else [c].
 
-Definition choices (b:board) : matrix_choices :=
+Fixpoint choices (b:board) : matrix_choices :=
   map (map choose) b.
 
-Definition single {A:Type} (l:list A) : bool :=
+Fixpoint single {A:Type} (l:list A) : bool :=
   match l with | [x] => true | _ => false end.
 
-Definition fixed (l:list (list cellval)) : list cellval :=
+Fixpoint fixed (l:list (list cellval)) : list cellval :=
   ungroup (filter single l).
 
 (* fs : fixed entries, cs : choices
    removes a list of fixed entries from the list of choices, used below *)
-Definition delete (fs:list cellval) (cs:list cellval) : list cellval :=
-  filter (fun x:cellval => member x fs) cs.
+Fixpoint delete (fs:list cellval) (cs:list cellval) : list cellval :=
+  filter (fun x:cellval => negb (member x fs)) cs.
   
 (* fs : fixed entries, cs : choices
    removes a list of fixed entries from the list of choices *)
-Definition remove (fs:list cellval) (cs:list cellval) : list cellval :=
+Fixpoint remove (fs:list cellval) (cs:list cellval) : list cellval :=
   if single cs then cs else delete fs cs.
 
-Definition reduce (l:list (list cellval)) : list (list cellval) :=
+Fixpoint reduce (l:list (list cellval)) : list (list cellval) :=
   map (remove (fixed l)) l.
 
 Definition prune_by (f:matrix_choices -> matrix_choices) : matrix_choices -> matrix_choices :=
   fun cs:matrix_choices => f (map reduce (f cs)).
 
-Definition prune (choices:matrix_choices) : matrix_choices :=
+Fixpoint prune (choices:matrix_choices) : matrix_choices :=
   prune_by boxes (prune_by cols (prune_by rows choices)).
 
-Definition void (cm:matrix_choices) : bool :=
+Fixpoint void (cm:matrix_choices) : bool :=
   any (any null) cm.
 
 Fixpoint nodups (l:list cellval) : bool :=
@@ -214,14 +214,14 @@ Fixpoint nodups (l:list cellval) : bool :=
     | x :: xs => if member x xs then false else nodups xs
   end.
 
-Definition safe (cm:matrix_choices) : bool :=
+Fixpoint safe (cm:matrix_choices) : bool :=
   andb3
     (all (fun xs:list (list cellval) => nodups (fixed xs)) (rows cm))
     (all (fun xs:list (list cellval) => nodups (fixed xs)) (cols cm))
     (all (fun xs:list (list cellval) => nodups (fixed xs)) (boxes cm)).
 
-Definition blocked (cm:matrix_choices) : bool :=
-  andb (void cm) (negb (safe cm)).
+Fixpoint blocked (cm:matrix_choices) : bool :=
+  orb (void cm) (negb (safe cm)).
 
 Fixpoint minimum (l:list nat) (m:nat) : nat :=
   match l with
@@ -235,10 +235,10 @@ Fixpoint list_size {A:Type} (l:list A) : nat :=
   | x::xs => S (list_size xs)
   end.
 
-Definition minchoice (cm:matrix_choices) : nat :=
+Fixpoint minchoice (cm:matrix_choices) : nat :=
   minimum (filter (fun n:nat => blt_nat 1 n) (ungroup (map (map list_size) cm))) 0.
 
-Definition best {A:Type} (m:nat) (cs:list A) : bool :=
+Fixpoint best {A:Type} (m:nat) (cs:list A) : bool :=
   beq_nat m (list_size cs).
 
 Fixpoint break {A:Type} (f: A -> bool) (l:list A) : (list A * list A) :=
@@ -250,7 +250,7 @@ Fixpoint break {A:Type} (f: A -> bool) (l:list A) : (list A * list A) :=
 
 Eval simpl in break (fun x => beq_nat 3 x) [1,2,3,4,5].
 
-Definition expand (cm:matrix_choices) : list matrix_choices :=
+Fixpoint expand (cm:matrix_choices) : list matrix_choices :=
   let n := minchoice cm in
   let (rows1,rows2') := (break (fun y => any (fun x => best n x) y) cm) in
   match rows2' with
@@ -276,7 +276,15 @@ Fixpoint search (n: nat) (cm:matrix_choices) : list matrix_choices :=
 Fixpoint sudoku (b:board) : list board :=
   map (map (fun l => hd [] l)) (search 1000 (prune (choices b))).
 
+(* Eval simpl in choices test_board.
+Eval compute in prune (choices test_board).
+Eval compute in rows (map reduce (rows (choices test_board))).
+Eval simpl in void (prune (choices test_board)).
+Eval simpl in search 1000 (prune (choices test_board)). *)
+
 Eval simpl in sudoku test_board.
+
+
 
 
 End Sudoku.
