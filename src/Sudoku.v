@@ -273,10 +273,10 @@ Fixpoint search (n: nat) (cm:matrix_choices) : list matrix_choices :=
   else ungroup (map (fun x:matrix_choices => search n' (prune x)) (expand cm))
   end.
 
-Definition sudoku (b:board) : list board :=
+Fixpoint sudoku (b:board) : list board :=
   map (map (fun l => hd [] l)) (search 1000 (prune (choices b))).
 
-
+Eval simpl in sudoku test_board.
 
 
 End Sudoku.
