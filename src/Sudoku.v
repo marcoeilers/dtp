@@ -120,7 +120,7 @@ Definition test_board : board :=
     [ "4", ".", ".", "2", "5", ".", ".", ".", "."] ].
 
 (* All characters defined *)
-Local Close Scope char_scope.
+
 
 (*
  * Operations on boards
@@ -223,10 +223,11 @@ Fixpoint safe (cm:matrix_choices) : bool :=
 Fixpoint blocked (cm:matrix_choices) : bool :=
   orb (void cm) (negb (safe cm)).
 
-Fixpoint minimum (l:list nat) (m:nat) : nat :=
+Fixpoint minimum (l:list nat) : nat :=
   match l with
-  | nil => m
-  | x::xs => if blt_nat x m then minimum xs x else minimum xs m
+    | [] => 0
+    | [x] => x
+    | x::xs => let m := minimum xs in if blt_nat m x then m else x
   end.
 
 Fixpoint list_size {A:Type} (l:list A) : nat :=
@@ -236,7 +237,7 @@ Fixpoint list_size {A:Type} (l:list A) : nat :=
   end.
 
 Fixpoint minchoice (cm:matrix_choices) : nat :=
-  minimum (filter (fun n:nat => blt_nat 1 n) (ungroup (map (map list_size) cm))) 0.
+  minimum (filter (fun n:nat => blt_nat 1 n) (ungroup (map (map list_size) cm))).
 
 Fixpoint best {A:Type} (m:nat) (cs:list A) : bool :=
   beq_nat m (list_size cs).
@@ -258,7 +259,7 @@ Fixpoint expand (cm:matrix_choices) : list matrix_choices :=
     | row::rows2 => 
         let (row1, row2') := break (fun x => best n x ) row in
         match row2' with
-          | nil => nil (* should never happen *)
+          | nil => [cm] (* should never happen *)
           | cs::row2 => map (fun c => rows1 ++ [row1 ++ [c]::row2] ++ rows2) cs
         end
   end.
@@ -266,7 +267,7 @@ Fixpoint expand (cm:matrix_choices) : list matrix_choices :=
 (* TODO illformed recursion over cm *)
 Fixpoint search (n: nat) (cm:matrix_choices) : list matrix_choices :=
   match n with
-  | 0 => [cm]
+  | 0 => [cm] (* should never happen *)
   | S n' =>
   if blocked cm then []
   else if all (all single) cm then [cm]
@@ -274,17 +275,20 @@ Fixpoint search (n: nat) (cm:matrix_choices) : list matrix_choices :=
   end.
 
 Fixpoint sudoku (b:board) : list board :=
-  map (map (fun l => hd [] l)) (search 1000 (prune (choices b))).
+  map (map (map (hd "."))) (search 1000 (prune (choices b))).
 
-(* Eval simpl in choices test_board.
+Eval simpl in choices test_board.
 Eval compute in prune (choices test_board).
 Eval compute in rows (map reduce (rows (choices test_board))).
-Eval simpl in void (prune (choices test_board)).
-Eval simpl in search 1000 (prune (choices test_board)). *)
+Eval compute in prune (choices test_board).
+Eval compute in void (prune (choices test_board)).
+Eval compute in negb (safe (prune (choices test_board))).
+Eval compute in search 1000 (prune (choices test_board)).
+Eval compute in minchoice (prune (choices test_board)).
 
-Eval simpl in sudoku test_board.
+Eval compute in sudoku test_board.
 
-
+Local Close Scope char_scope.
 
 
 End Sudoku.
