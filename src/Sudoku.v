@@ -290,5 +290,21 @@ Eval compute in sudoku test_board.
 
 Local Close Scope char_scope.
 
+(*
+  - recursion?
+    - well founded proof by hand
+    - co-inductive types *
+    - predicates, call graphs
+    - axioms
+  - should never happen sections
+    - program fixpoint with bangs ! for branches that never happen
+    - Xmonad, refine and pass around proof arguments
+  - what to prove
+    - sound and complete, if there is a solution then the naive/optimized one will find it
+    - validness of solutions
+    - prune never throws away good solutions
+    - implement brute force approach, reason about that and draw analogies
+*)
+
 
 End Sudoku.
