@@ -1,68 +1,14 @@
 (*
+ *
  * A Simple Sudoku Solver in Coq
+ *
  *)
 
-(* Some useful functions on nats etc. *)
-Require Export Basics.
+(* Some basic definitions and functions on booleans, nats and lists *)
+Require Export Misc.
 
-(* Lists and their notations *)
+(* List is not exported from Misc *)
 Require Import List.
-Notation "x :: l" := (cons x l) (at level 60, right associativity).
-Notation "[ ]" := nil.
-Notation "[ x , .. , y ]" := (cons x .. (cons y nil) ..).
-
-(* Groups a list into chunks of size n *)
-Fixpoint group_by {A:Type} (n:nat) (l:list A) : list (list A) :=
-  match l with
-    | [] => []
-    | x :: xs => match group_by n xs with
-      | [] => [[x]]
-      | y :: ys => if beq_nat (length y) n then [x] :: (y :: ys) else (x :: y) :: ys
-    end
-  end.
-
-(* Merges a list of lists into a single list *)
-Fixpoint ungroup {A:Type} (l:list (list A)) : list A :=
-  match l with
-    | [] => []
-    | xs :: xss => xs ++ ungroup xss
-  end.
-
-(* Combines two lists by prepending the elements of one list
-   to each sublist of the other list *)
-Fixpoint combine_prepend {A:Type} (l:list A) (l':list (list A)) : list (list A) :=
-  match l, l' with
-    | x::xs, y::ys => (x :: y) :: (combine_prepend xs ys)
-    | _, _ => nil
-  end.
-
-(* As per http://coq.inria.fr/V8.1/stdlib/Coq.Lists.List.html *)
-Fixpoint filter {A:Type} (f:A -> bool) (l:list A) : list A := 
-  match l with 
-    | nil => nil
-    | x :: l => if f x then x::(filter f l) else filter f l
-  end.
-
-(* Determines if any element of the list satisfies the predicate *)
-Fixpoint any {A:Type} (f:A -> bool) (l:list A) : bool :=
-  match l with
-    | [] => false
-    | x :: xs => if f x then true else any f xs
-  end.
-
-(* Test whether a list is empty *)
-Fixpoint null {A:Type} (l:list A) : bool :=
-  match l with
-    | [] => true
-    | _ => false
-  end.
-
-(* Determines if all elements of the list satisfy the predicate *)
-Fixpoint all {A:Type} (f:A -> bool) (l:list A) : bool :=
-  match l with
-    | [] => true
-    | x :: xs => if f x then all f xs else false
-  end.
 
 (* Ascii characters for cell values *)
 Require Import Ascii.
@@ -78,6 +24,7 @@ Definition boxsize : nat := 3.
 Definition cellval := ascii.
 Definition cellvals : list cellval :=
   [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ].
+Definition blankval := ".".
 Definition blank (a:cellval) : bool :=
   match a with | "." => true | _ => false end.
 
@@ -108,7 +55,8 @@ Definition example_board_transpose : board :=
     [ "8", "8", "8", "8", "8", "8", "8", "8", "8" ],
     [ "9", "9", "9", "9", "9", "9", "9", "9", "9" ] ].
 
-Definition test_board : board :=
+(* A solvable board *)
+Definition solvable_board : board :=
   [ [ "2", ".", ".", ".", ".", "1", ".", "3", "8"],
     [ ".", ".", ".", ".", ".", ".", ".", ".", "5"],
     [ ".", "7", ".", ".", ".", "6", ".", ".", "."],
@@ -120,14 +68,14 @@ Definition test_board : board :=
     [ "4", ".", ".", "2", "5", ".", ".", ".", "."] ].
 
 (* All characters defined *)
-
+Local Close Scope char_scope.
 
 (*
  * Operations on boards
  *)
 
 (* Get the rows of a board -- identity since a board is a list of rows *)
-Fixpoint rows {A:Type} (b:list (list A)) : list (list A) := b.
+Definition rows {A:Type} (b:list (list A)) : list (list A) := b.
 
 (* Check rows by example *)
 Example test_rows_id_1 : rows example_board = example_board.
@@ -150,10 +98,10 @@ Example test_cold_id : cols (cols example_board) = example_board.
 Proof. reflexivity. Qed.
 
 (* Used for the extraction of boxes from a board *)
-Fixpoint group {A:Type} (l:list A) := group_by boxsize l.
+Definition group {A:Type} (l:list A) := group_by boxsize l.
 
 (* Get the boxes of a board *)
-Fixpoint boxes {A:Type} (b:list (list A)) : list (list A) :=
+Definition boxes {A:Type} (b:list (list A)) : list (list A) :=
   map ungroup (ungroup (map cols (group (map group b)))).
 
 (* Check boxes identity *)
@@ -164,131 +112,118 @@ Proof. reflexivity. Qed.
  * The actual solver
  *)
 
+(* Equality interface for ascii characters *)
 Definition Interface_eq x y := if ascii_dec x y then true else false.
 
+(* True if a is a member of l *)
 Fixpoint member (a:cellval) (l:list cellval) : bool :=
   match l with
     | [] => false
     | x :: xs => if Interface_eq x a then true else member a xs
   end.
 
+(* A matrix of choices, basically a board with a list of possible values
+   for each cell *)
 Definition matrix_choices := list (list (list cellval)).
 
-Fixpoint choose (c:cellval) : list cellval :=
+(* For a blank cell gives all possible cellvals, otherwise gives the cell *)
+Definition choose (c:cellval) : list cellval :=
   if blank c then cellvals else [c].
 
-Fixpoint choices (b:board) : matrix_choices :=
+(* Generates (possibly invalid) choices for a board *)
+Definition choices (b:board) : matrix_choices :=
   map (map choose) b.
 
-Fixpoint single {A:Type} (l:list A) : bool :=
-  match l with | [x] => true | _ => false end.
-
-Fixpoint fixed (l:list (list cellval)) : list cellval :=
+(* Gives the cell values that are already certain (i.e. they are the only choice) *)
+Definition fixed (l:list (list cellval)) : list cellval :=
   ungroup (filter single l).
 
-(* fs : fixed entries, cs : choices
-   removes a list of fixed entries from the list of choices, used below *)
-Fixpoint delete (fs:list cellval) (cs:list cellval) : list cellval :=
+(* Removes a list of fixed entries from the list of choices, used below
+   fs : fixed entries, cs : choices *)
+Definition delete (fs:list cellval) (cs:list cellval) : list cellval :=
   filter (fun x:cellval => negb (member x fs)) cs.
   
-(* fs : fixed entries, cs : choices
-   removes a list of fixed entries from the list of choices *)
-Fixpoint remove (fs:list cellval) (cs:list cellval) : list cellval :=
+(* Removes a list of fixed entries from the list of choices, used below
+   fs : fixed entries, cs : choices *)
+Definition remove (fs:list cellval) (cs:list cellval) : list cellval :=
   if single cs then cs else delete fs cs.
 
-Fixpoint reduce (l:list (list cellval)) : list (list cellval) :=
+(* Removes fixed entries from the list of choices *)
+Definition reduce (l:list (list cellval)) : list (list cellval) :=
   map (remove (fixed l)) l.
 
-Definition prune_by (f:matrix_choices -> matrix_choices) : matrix_choices -> matrix_choices :=
+(* Removes fixed entries from matrix choices given a selector function *)
+Definition prune_by (f:matrix_choices -> matrix_choices) :
+  matrix_choices -> matrix_choices :=
   fun cs:matrix_choices => f (map reduce (f cs)).
 
-Fixpoint prune (choices:matrix_choices) : matrix_choices :=
+(* Removes fixed entries from matrix choices *)
+Definition prune (choices:matrix_choices) : matrix_choices :=
   prune_by boxes (prune_by cols (prune_by rows choices)).
 
-Fixpoint void (cm:matrix_choices) : bool :=
+(* True if any cell has an empty list of choices *)
+Definition void (cm:matrix_choices) : bool :=
   any (any null) cm.
 
+(* True if there are no duplicates in l *)
 Fixpoint nodups (l:list cellval) : bool :=
   match l with
     | [] => true
     | x :: xs => if member x xs then false else nodups xs
   end.
 
-Fixpoint safe (cm:matrix_choices) : bool :=
+(* True if there are no duplicates in the matrix of choices *)
+Definition safe (cm:matrix_choices) : bool :=
   andb3
     (all (fun xs:list (list cellval) => nodups (fixed xs)) (rows cm))
     (all (fun xs:list (list cellval) => nodups (fixed xs)) (cols cm))
     (all (fun xs:list (list cellval) => nodups (fixed xs)) (boxes cm)).
 
-Fixpoint blocked (cm:matrix_choices) : bool :=
+(* True if the matrix of choices contains an empty cell or duplicates *)
+Definition blocked (cm:matrix_choices) : bool :=
   orb (void cm) (negb (safe cm)).
 
-Fixpoint minimum (l:list nat) : nat :=
-  match l with
-    | [] => 0
-    | [x] => x
-    | x::xs => let m := minimum xs in if blt_nat m x then m else x
-  end.
-
-Fixpoint list_size {A:Type} (l:list A) : nat :=
-  match l with
-  | nil => 0
-  | x::xs => S (list_size xs)
-  end.
-
-Fixpoint minchoice (cm:matrix_choices) : nat :=
+(* Returns the minimum number of choices for all cells that have
+   more than one choice  *)
+Definition minchoice (cm:matrix_choices) : nat :=
   minimum (filter (fun n:nat => blt_nat 1 n) (ungroup (map (map list_size) cm))).
 
-Fixpoint best {A:Type} (m:nat) (cs:list A) : bool :=
+(* True if the length of cs is equal to m *)
+Definition best {A:Type} (m:nat) (cs:list A) : bool :=
   beq_nat m (list_size cs).
 
-Fixpoint break {A:Type} (f: A -> bool) (l:list A) : (list A * list A) :=
-  match l with
-  | nil => (nil, nil)
-  | x::xs => if f x then (nil, l) 
-                    else let (a,b) := (break f xs) in (x::a, b)
-  end.
-
-Eval simpl in break (fun x => beq_nat 3 x) [1,2,3,4,5].
-
-Fixpoint expand (cm:matrix_choices) : list matrix_choices :=
+(* Generates all possible choices for a cell with a minimal number of choices *)
+Definition expand (cm:matrix_choices) : list matrix_choices :=
   let n := minchoice cm in
-  let (rows1,rows2') := (break (fun y => any (fun x => best n x) y) cm) in
+  let (rows1, rows2') := (break (fun y => any (fun x => best n x) y) cm) in
   match rows2' with
     | nil => nil (* should never happen *)
     | row::rows2 => 
         let (row1, row2') := break (fun x => best n x ) row in
         match row2' with
-          | nil => [cm] (* should never happen *)
+          | nil => nil (* should never happen *)
           | cs::row2 => map (fun c => rows1 ++ [row1 ++ [c]::row2] ++ rows2) cs
         end
   end.
 
-(* TODO illformed recursion over cm *)
+(* Prunes a list of matrix choices until every cell has only one value
+   or the matrix of choices is invalid *)
 Fixpoint search (n: nat) (cm:matrix_choices) : list matrix_choices :=
   match n with
-  | 0 => [cm] (* should never happen *)
-  | S n' =>
-  if blocked cm then []
-  else if all (all single) cm then [cm]
-  else ungroup (map (fun x:matrix_choices => search n' (prune x)) (expand cm))
+    | 0 => [] (* should never happen *)
+    | S n' =>
+      if blocked cm then []
+      else if all (all single) cm then [cm]
+      else ungroup (map (fun x:matrix_choices => search n' (prune x)) (expand cm))
   end.
 
-Fixpoint sudoku (b:board) : list board :=
-  map (map (map (hd "."))) (search 1000 (prune (choices b))).
+(* Solves a Sudoku *)
+Definition sudoku (b:board) : list board :=
+  map (map (map (hd blankval))) (search 1000 (prune (choices b))).
 
-Eval simpl in choices test_board.
-Eval compute in prune (choices test_board).
-Eval compute in rows (map reduce (rows (choices test_board))).
-Eval compute in prune (choices test_board).
-Eval compute in void (prune (choices test_board)).
-Eval compute in negb (safe (prune (choices test_board))).
-Eval compute in search 1000 (prune (choices test_board)).
-Eval compute in minchoice (prune (choices test_board)).
+Eval compute in sudoku solvable_board.
 
-Eval compute in sudoku test_board.
-
-Local Close Scope char_scope.
+End Sudoku.
 
 (*
   - recursion?
@@ -305,6 +240,3 @@ Local Close Scope char_scope.
     - prune never throws away good solutions
     - implement brute force approach, reason about that and draw analogies
 *)
-
-
-End Sudoku.
