@@ -67,6 +67,18 @@ Definition solvable_board : board :=
     [ ".", "5", ".", ".", "6", "9", "7", "8", "4"],
     [ "4", ".", ".", "2", "5", ".", ".", ".", "."] ].
 
+(* The same board but almost solved *)
+Definition almost_solved_board : board := 
+[ [ "2", "4", "9", "5", "7", "1", "6", "3", "8" ],
+  [ "8", ".", "1", "4", "3", "2", "9", "7", "5" ],
+  [ "5", "7", ".", "9", "8", "6", "1", "4", "2" ],
+  [ "7", "2", "5", ".", "9", "8", "4", "1", "3" ],
+  [ "6", "9", "8", "1", ".", "3", "2", "5", "7" ],
+  [ "3", "1", "4", "7", "2", "5", "8", "6", "9" ],
+  [ "9", "3", "7", "8", "1", "4", "5", "2", "6" ],
+  [ "1", "5", "2", "3", "6", "9", "7", "8", "4" ],
+  [ "4", "8", "6", "2", "5", "7", "3", "9", "1" ] ].
+
 (* All characters defined *)
 Local Close Scope char_scope.
 
@@ -222,6 +234,40 @@ Definition sudoku (b:board) : list board :=
   map (map (map (hd blankval))) (search 1000 (prune (choices b))).
 
 Eval compute in sudoku solvable_board.
+
+(*
+ * Reasoning about sudoku
+ *)
+
+(* lol ^^ *)
+
+(*
+ * Naive Sudoku Implementation
+ *)
+
+(* True if the board is correctly solved *)
+Definition correct (b:board) : bool :=
+  andb3 (all nodups (rows b)) (all nodups (cols b)) (all nodups (boxes b)).
+
+Definition sudoku_naive (b:board) : list board :=
+  filter correct (mcp (choices b)).
+
+(* The following gives a Segmentation Fault:
+   Eval compute in sudoku_naive solvable_board.
+ *)
+Eval compute in sudoku_naive almost_solved_board.
+
+(*
+ * Not so naive but still very naive Sudoku Implementation
+ *)
+
+Definition sudoku_naive_2 (b:board) : list board :=
+  filter correct (mcp (prune (choices b))).
+
+(* The following gives a Segmentation Fault:
+   Eval compute in sudoku_naive solvable_board.
+ *)
+Eval compute in sudoku_naive_2 almost_solved_board.
 
 End Sudoku.
 
