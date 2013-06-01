@@ -137,3 +137,14 @@ Fixpoint ungroup {A:Type} (l:list (list A)) : list A :=
     | [] => []
     | xs :: xss => xs ++ ungroup xss
   end.
+
+(* Cartesian product of a list of lists *)
+Fixpoint cp {A:Type} (l:list (list A)) : list (list A) :=
+  match l with
+    | [] => [[]]
+    | xs :: xss => ungroup (map (fun x => map (fun ys => x :: ys) (cp xss)) xs)
+  end.
+
+(* Matrix cartesian product *)
+Definition mcp {A:Type} (l: list (list (list A))) : list (list (list A)) :=
+  cp (map cp l).
