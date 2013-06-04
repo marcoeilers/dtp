@@ -63,7 +63,7 @@ Definition example_board_transpose : board :=
     [ Eight, Eight, Eight, Eight, Eight, Eight, Eight, Eight, Eight ],
     [ Nine, Nine, Nine, Nine, Nine, Nine, Nine, Nine, Nine ] ].
 
-(* A solvable board *)
+(* A solvable board as well as its almost solved and completely solved variants *)
 Definition solvable_board : board :=
   [ [ Two, Blank, Blank, Blank, Blank, One, Blank, Three, Eight],
     [ Blank, Blank, Blank, Blank, Blank, Blank, Blank, Blank, Five],
@@ -74,18 +74,26 @@ Definition solvable_board : board :=
     [ Nine, Blank, Blank, Eight, Blank, Blank, Blank, Two, Blank],
     [ Blank, Five, Blank, Blank, Six, Nine, Seven, Eight, Four],
     [ Four, Blank, Blank, Two, Five, Blank, Blank, Blank, Blank] ].
-
-(* The same board but almost solved *)
 Definition almost_solved_board : board := 
-[ [ Two, Four, Nine, Five, Seven, One, Six, Three, Eight ],
-  [ Eight, Blank, One, Four, Three, Two, Nine, Seven, Five ],
-  [ Five, Seven, Blank, Nine, Eight, Six, One, Four, Two ],
-  [ Seven, Two, Five, Blank, Nine, Eight, Four, One, Three ],
-  [ Six, Nine, Eight, One, Blank, Three, Two, Five, Seven ],
-  [ Three, One, Four, Seven, Two, Five, Eight, Six, Nine ],
-  [ Nine, Three, Seven, Eight, One, Four, Five, Two, Six ],
-  [ One, Five, Two, Three, Six, Nine, Seven, Eight, Four ],
-  [ Four, Eight, Six, Two, Five, Seven, Three, Nine, One ] ].
+  [ [ Two, Four, Nine, Five, Seven, One, Six, Three, Eight ],
+    [ Eight, Blank, One, Four, Three, Two, Nine, Seven, Five ],
+    [ Five, Seven, Blank, Nine, Eight, Six, One, Four, Two ],
+    [ Seven, Two, Five, Blank, Nine, Eight, Four, One, Three ],
+    [ Six, Nine, Eight, One, Blank, Three, Two, Five, Seven ],
+    [ Three, One, Four, Seven, Two, Five, Eight, Six, Nine ],
+    [ Nine, Three, Seven, Eight, One, Four, Five, Two, Six ],
+    [ One, Five, Two, Three, Six, Nine, Seven, Eight, Four ],
+    [ Four, Eight, Six, Two, Five, Seven, Three, Nine, One ] ].
+Definition solved_board : board :=
+  [ [ Two, Four, Nine, Five, Seven, One, Six, Three, Eight ],
+    [ Eight, Six, One, Four, Three, Two, Nine, Seven, Five ],
+    [ Five, Seven, Three, Nine, Eight, Six, One, Four, Two ],
+    [ Seven, Two, Five, Six, Nine, Eight, Four, One, Three ],
+    [ Six, Nine, Eight, One, Four, Three, Two, Five, Seven ],
+    [ Three, One, Four, Seven, Two, Five, Eight, Six, Nine ],
+    [ Nine, Three, Seven, Eight, One, Four, Five, Two, Six ],
+    [ One, Five, Two, Three, Six, Nine, Seven, Eight, Four ],
+    [ Four, Eight, Six, Two, Five, Seven, Three, Nine, One ] ].
 
 (*
  * Operations on boards
@@ -241,7 +249,28 @@ Eval compute in sudoku solvable_board.
  * Reasoning about sudoku
  *)
 
-(* lol ^^ *)
+Lemma rows_id : forall (b:board),
+  rows (rows b) = b.
+Proof. reflexivity. Qed.
+
+Lemma cols_id : forall (b:board),
+  cols (cols b) = b.
+Proof.
+  (* TODO *)
+Admitted.
+
+Lemma boxes_id : forall (b:board),
+  boxes (boxes b) = b.
+Proof.
+  (* TODO *)
+Admitted.
+
+(* Counts the choices in a matrix*)
+Definition count_choices (cm : matrix_choices) : nat :=
+  fold_left
+    (fun sum x : nat => if ble_nat x 1 then sum else sum + x)
+    (ungroup (map (map list_size) cm))
+    0.
 
 (*
  * Naive Sudoku Implementation
