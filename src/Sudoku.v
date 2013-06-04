@@ -10,23 +10,31 @@ Require Export Misc.
 (* List is not exported from Misc *)
 Require Import List.
 
-(* Ascii characters for cell values *)
-Require Import Ascii.
-
 Module Sudoku.
-
-(* To be able to use ascii characters like "3", "." etc. *)
-Local Open Scope char_scope.
 
 (* Constants *)
 Definition boardsize : nat := 9.
 Definition boxsize : nat := 3.
-Definition cellval := ascii.
+Inductive cellval : Type :=
+  One | Two | Three | Four | Five | Six | Seven | Eight | Nine | Blank.
+Definition cellval_eq (a b : cellval) : bool :=
+  match a, b with
+    | One, One => true
+    | Two, Two => true
+    | Three, Three => true
+    | Four, Four => true
+    | Five, Five => true
+    | Six, Six => true
+    | Seven, Seven => true
+    | Eight, Eight => true
+    | Nine, Nine => true
+    | Blank, Blank => true
+    | _, _ => false
+  end.
 Definition cellvals : list cellval :=
-  [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ].
-Definition blankval := ".".
+  [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine ].
 Definition blank (a:cellval) : bool :=
-  match a with | "." => true | _ => false end.
+  match a with | Blank => true | _ => false end.
 
 (* Board definition *)
 Definition col := list cellval.
@@ -35,52 +43,49 @@ Definition board := list row.
 
 (* Example board and its transpose *)
 Definition example_board : board :=
-  [ [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ],
-    [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ],
-    [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ],
-    [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ],
-    [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ],
-    [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ],
-    [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ],
-    [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ],
-    [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ] ].
+  [ [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine ],
+    [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine ],
+    [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine ],
+    [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine ],
+    [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine ],
+    [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine ],
+    [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine ],
+    [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine ],
+    [ One, Two, Three, Four, Five, Six, Seven, Eight, Nine ] ].
 Definition example_board_transpose : board :=
-  [ [ "1", "1", "1", "1", "1", "1", "1", "1", "1" ],
-    [ "2", "2", "2", "2", "2", "2", "2", "2", "2" ],
-    [ "3", "3", "3", "3", "3", "3", "3", "3", "3" ],
-    [ "4", "4", "4", "4", "4", "4", "4", "4", "4" ],
-    [ "5", "5", "5", "5", "5", "5", "5", "5", "5" ],
-    [ "6", "6", "6", "6", "6", "6", "6", "6", "6" ],
-    [ "7", "7", "7", "7", "7", "7", "7", "7", "7" ],
-    [ "8", "8", "8", "8", "8", "8", "8", "8", "8" ],
-    [ "9", "9", "9", "9", "9", "9", "9", "9", "9" ] ].
+  [ [ One, One, One, One, One, One, One, One, One ],
+    [ Two, Two, Two, Two, Two, Two, Two, Two, Two ],
+    [ Three, Three, Three, Three, Three, Three, Three, Three, Three ],
+    [ Four, Four, Four, Four, Four, Four, Four, Four, Four ],
+    [ Five, Five, Five, Five, Five, Five, Five, Five, Five ],
+    [ Six, Six, Six, Six, Six, Six, Six, Six, Six ],
+    [ Seven, Seven, Seven, Seven, Seven, Seven, Seven, Seven, Seven ],
+    [ Eight, Eight, Eight, Eight, Eight, Eight, Eight, Eight, Eight ],
+    [ Nine, Nine, Nine, Nine, Nine, Nine, Nine, Nine, Nine ] ].
 
 (* A solvable board *)
 Definition solvable_board : board :=
-  [ [ "2", ".", ".", ".", ".", "1", ".", "3", "8"],
-    [ ".", ".", ".", ".", ".", ".", ".", ".", "5"],
-    [ ".", "7", ".", ".", ".", "6", ".", ".", "."],
-    [ ".", ".", ".", ".", ".", ".", ".", "1", "3"],
-    [ ".", "9", "8", "1", ".", ".", "2", "5", "7"],
-    [ "3", "1", ".", ".", ".", ".", "8", ".", "."],
-    [ "9", ".", ".", "8", ".", ".", ".", "2", "."],
-    [ ".", "5", ".", ".", "6", "9", "7", "8", "4"],
-    [ "4", ".", ".", "2", "5", ".", ".", ".", "."] ].
+  [ [ Two, Blank, Blank, Blank, Blank, One, Blank, Three, Eight],
+    [ Blank, Blank, Blank, Blank, Blank, Blank, Blank, Blank, Five],
+    [ Blank, Seven, Blank, Blank, Blank, Six, Blank, Blank, Blank],
+    [ Blank, Blank, Blank, Blank, Blank, Blank, Blank, One, Three],
+    [ Blank, Nine, Eight, One, Blank, Blank, Two, Five, Seven],
+    [ Three, One, Blank, Blank, Blank, Blank, Eight, Blank, Blank],
+    [ Nine, Blank, Blank, Eight, Blank, Blank, Blank, Two, Blank],
+    [ Blank, Five, Blank, Blank, Six, Nine, Seven, Eight, Four],
+    [ Four, Blank, Blank, Two, Five, Blank, Blank, Blank, Blank] ].
 
 (* The same board but almost solved *)
 Definition almost_solved_board : board := 
-[ [ "2", "4", "9", "5", "7", "1", "6", "3", "8" ],
-  [ "8", ".", "1", "4", "3", "2", "9", "7", "5" ],
-  [ "5", "7", ".", "9", "8", "6", "1", "4", "2" ],
-  [ "7", "2", "5", ".", "9", "8", "4", "1", "3" ],
-  [ "6", "9", "8", "1", ".", "3", "2", "5", "7" ],
-  [ "3", "1", "4", "7", "2", "5", "8", "6", "9" ],
-  [ "9", "3", "7", "8", "1", "4", "5", "2", "6" ],
-  [ "1", "5", "2", "3", "6", "9", "7", "8", "4" ],
-  [ "4", "8", "6", "2", "5", "7", "3", "9", "1" ] ].
-
-(* All characters defined *)
-Local Close Scope char_scope.
+[ [ Two, Four, Nine, Five, Seven, One, Six, Three, Eight ],
+  [ Eight, Blank, One, Four, Three, Two, Nine, Seven, Five ],
+  [ Five, Seven, Blank, Nine, Eight, Six, One, Four, Two ],
+  [ Seven, Two, Five, Blank, Nine, Eight, Four, One, Three ],
+  [ Six, Nine, Eight, One, Blank, Three, Two, Five, Seven ],
+  [ Three, One, Four, Seven, Two, Five, Eight, Six, Nine ],
+  [ Nine, Three, Seven, Eight, One, Four, Five, Two, Six ],
+  [ One, Five, Two, Three, Six, Nine, Seven, Eight, Four ],
+  [ Four, Eight, Six, Two, Five, Seven, Three, Nine, One ] ].
 
 (*
  * Operations on boards
@@ -124,14 +129,11 @@ Proof. reflexivity. Qed.
  * The actual solver
  *)
 
-(* Equality interface for ascii characters *)
-Definition Interface_eq x y := if ascii_dec x y then true else false.
-
 (* True if a is a member of l *)
 Fixpoint member (a:cellval) (l:list cellval) : bool :=
   match l with
     | [] => false
-    | x :: xs => if Interface_eq x a then true else member a xs
+    | x :: xs => if cellval_eq x a then true else member a xs
   end.
 
 (* A matrix of choices, basically a board with a list of possible values
@@ -231,7 +233,7 @@ Fixpoint search (n: nat) (cm:matrix_choices) : list matrix_choices :=
 
 (* Solves a Sudoku *)
 Definition sudoku (b:board) : list board :=
-  map (map (map (hd blankval))) (search 1000 (prune (choices b))).
+  map (map (map (hd Blank))) (search 1000 (prune (choices b))).
 
 Eval compute in sudoku solvable_board.
 
