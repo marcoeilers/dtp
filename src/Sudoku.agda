@@ -27,7 +27,9 @@ vmap : {a b : Set} {n : Nat} -> (a -> b) -> Vec a n -> Vec b n
 vmap f [] = []
 vmap f (x ∷ xs) = (f x) ∷ (vmap f xs)
 
-
+pow : Nat -> Nat -> Nat
+pow n zero = 1
+pow n (suc n') = n * pow n n'
 
 
 boxsize = 3
@@ -98,6 +100,51 @@ allVec (x ∷ xs) f = if f x then allVec xs f else false
 
 correct : Board -> Bool
 correct b = allVec (rows b) nodups ∧ allVec (cols b) nodups ∧ allVec (boxs b) nodups
+
+cp : {a : Set} {n m : Nat} -> Vec (Vec a n) m -> Vec (Vec a m) (pow n m)
+cp [] = pure []
+cp (xs ∷ xss) = concat (map (λ x -> map (λ ys -> x ∷ ys) (cp xss)) xs)
+
+cp' : {a : Set} {n : Nat} -> Vec (L.List a) n -> L.List (Vec a n)
+cp' [] = L._∷_ [] L.[]
+cp' (xs ∷ xss) = L.concat (L.map (λ x -> L.map (λ ys -> x ∷ ys) (cp' xss)) xs)
+
+mcp : {a : Set} {n m : Nat} -> Vec (Vec (L.List a) m) n -> L.List (Vec (Vec a m) n)
+mcp cs = cp' (map cp' cs)
+
+sudokuNaive : Board -> L.List Board
+sudokuNaive b = L.filter correct (mcp (choices b))
+
+single : L.List CellVal -> Bool
+single l = eq_nat (L.length l) 0
+
+fixed : {n : Nat} -> Vec (L.List CellVal) n -> L.List CellVal
+fixed v = let l = toList v
+           in L.concat (L.filter single l)
+
+lmember : L.List CellVal -> CellVal -> Bool
+lmember L.[] v = false
+lmember (L._∷_ x xs) v = if eq_nat x v then true else lmember xs v
+
+delete : L.List CellVal -> L.List CellVal -> L.List CellVal
+delete fs cs = L.filter (λ x -> not (lmember fs x)) cs
+
+remove : L.List CellVal -> L.List CellVal -> L.List CellVal
+remove fs cs = if single cs then cs else delete fs cs
+
+reduce : {n : Nat} -> Vec (L.List CellVal) n -> Vec (L.List CellVal) n
+reduce l = map (remove (fixed l)) l
+
+pruneBy : (MatrixChoices -> MatrixChoices) -> MatrixChoices -> MatrixChoices
+pruneBy f = λ cs -> f (map reduce (f cs))
+
+prune : MatrixChoices -> MatrixChoices
+prune cs = pruneBy boxs (pruneBy cols (pruneBy rows cs))
+
+sudokuNaive2 : Board -> L.List Board
+sudokuNaive2 b = L.filter correct (mcp (prune (choices b)))
+
+
 
 
 
