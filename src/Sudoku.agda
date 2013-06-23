@@ -1,12 +1,22 @@
 module Sudoku where
+
+data _==_ {X : Set}(x : X) : X -> Set where 
+  Refl : x == x
+
+
 open import Data.Bool
 open import Data.Nat
 open import Data.Vec
 import Data.Product as P
 import Data.List as L
 
-
 Nat = ℕ
+
+cong : {a b : Set} -> {x y : a} -> (f : a -> b) -> x == y -> (f x) == (f y)
+cong f Refl = Refl
+
+trans : {a : Set} {b c d : a} -> b == c -> c == d -> b == d
+trans Refl Refl = Refl
 
 eq_nat : Nat -> Nat -> Bool
 eq_nat zero zero = true
@@ -94,12 +104,12 @@ nodups : {n : Nat} -> Vec CellVal n -> Bool
 nodups [] = true
 nodups (x ∷ xs) = if member x xs then false else nodups xs
 
-allVec : {a : Set} {n : Nat} -> Vec a n -> (a -> Bool) -> Bool
-allVec [] f = true
-allVec (x ∷ xs) f = if f x then allVec xs f else false 
+allVec : {a : Set} {n : Nat} -> (a -> Bool) -> Vec a n -> Bool
+allVec f [] = true
+allVec f (x ∷ xs) = if f x then allVec f xs else false 
 
 correct : Board -> Bool
-correct b = allVec (rows b) nodups ∧ allVec (cols b) nodups ∧ allVec (boxs b) nodups
+correct b = allVec nodups (rows b)  ∧ allVec nodups (cols b)  ∧ allVec nodups (boxs b)
 
 cp : {a : Set} {n m : Nat} -> Vec (Vec a n) m -> Vec (Vec a m) (pow n m)
 cp [] = pure []
@@ -144,6 +154,27 @@ prune cs = pruneBy boxs (pruneBy cols (pruneBy rows cs))
 sudokuNaive2 : Board -> L.List Board
 sudokuNaive2 b = L.filter correct (mcp (prune (choices b)))
 
+fType : {a : Set} -> Set
+fType {a} = (Vec (Vec a boardsize) boardsize -> Vec (Vec a boardsize) boardsize)
+bType = Vec (Vec (L.List CellVal) boardsize) boardsize
+b'Type = L.List (Vec (Vec CellVal boardsize) boardsize)
+b''Type : {a : Set} -> Set
+b''Type {a} = Vec (Vec a boardsize) boardsize
+
+fId' : (x : (Vec (Vec CellVal boardsize) boardsize)) -> (f : fType) -> (b' : b'Type) -> (p : Vec (Vec CellVal boardsize) boardsize -> Bool) -> ((b'' : b''Type) -> f (f b'') == b'') -> L._∷_ x (L.map f (L.filter p (L.map f b'))) == L._∷_ (f (f x)) (L.map f (L.filter p (L.map f b'))) 
+fId' x f b' p id with (f (f x)) | id x
+fId' x f b' p id | .x | Refl = Refl
+
+fId : (f : fType) -> (b' : b'Type) -> (p : Vec (Vec CellVal boardsize) boardsize -> Bool) -> ((b'' : b''Type) -> f (f b'') == b'') -> L.filter (λ x -> p (f x)) b' == L.map f (L.filter p (L.map f b'))
+fId f L.[] p id = Refl
+fId f (L._∷_ x xs) p id with p (f x)
+fId f (L._∷_ x xs) p id | bool with (f (f x)) | id x 
+fId f (L._∷_ x xs) p id | true | .x | Refl  = {!trans (cong (L._∷_ x) (fId f xs p id)) (fId' x f xs p id)!}
+fId f (L._∷_ x xs) p id | false | .x | Refl = fId f xs p id
+
+
+step1 : {a : Set} -> (f : fType) -> ((b'' : b''Type ) -> f (f b'') == b'') -> (b : bType) -> L.filter (λ x -> allVec nodups (f x)) (mcp b) == L.map f (L.filter (allVec nodups) (L.map f (mcp b)))
+step1 f id b = fId f (mcp b) (allVec nodups) id
 
 
 
