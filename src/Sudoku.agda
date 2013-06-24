@@ -157,23 +157,33 @@ sudokuNaive2 b = L.filter correct (mcp (prune (choices b)))
 fType : {a : Set} -> Set
 fType {a} = (Vec (Vec a boardsize) boardsize -> Vec (Vec a boardsize) boardsize)
 bType = Vec (Vec (L.List CellVal) boardsize) boardsize
-b'Type = L.List (Vec (Vec CellVal boardsize) boardsize)
+b'Type = L.List Board
 b''Type : {a : Set} -> Set
 b''Type {a} = Vec (Vec a boardsize) boardsize
 b'''Type : {a : Set} -> Set
 b'''Type {a} = Vec (Vec (L.List a) boardsize) boardsize
-b''''Type = Vec (Vec (L.List CellVal) boardsize) boardsize
+b''''Type = MatrixChoices
+idType : {a : Set} -> (fType {a}) -> Set
+idType {a} f = ((b'' : b''Type) -> f (f b'') == b'')
+polyFType = (a : Set) -> fType {a}
+mapMcpType : polyFType -> Set
+mapMcpType f = ({b'' : b''Type} -> L.map (f CellVal) (mcp b'') == mcp ((f (L.List CellVal)) b''))
 
 colsId : {a : Set} -> (b : Vec (Vec a boardsize) boardsize) -> cols (cols b) == b
 colsId ((x ∷ xs) ∷ xs') with cols xs'
 colsId ((x' ∷ xs1) ∷ xs') | (x ∷ xs) ∷ xs0 = {!!}
 --colsId ((x ∷ x' ∷ x0 ∷ x1 ∷ x2 ∷ x3 ∷ x4 ∷ x5 ∷ x6 ∷ []) ∷ xs') = {!!}
 
-fId' : (x : (Vec (Vec CellVal boardsize) boardsize)) -> (f : fType) -> (b' : b'Type) -> (p : Vec (Vec CellVal boardsize) boardsize -> Bool) -> ((b'' : b''Type) -> f (f b'') == b'') -> L._∷_ x (L.map f (L.filter p (L.map f b'))) == L._∷_ (f (f x)) (L.map f (L.filter p (L.map f b'))) 
+colsMapMcp : (b : bType) -> L.map cols (mcp b) == mcp (cols b)
+colsMapMcp ((x ∷ xs) ∷ xs') = {!!}
+
+fId' : (x : Board) -> (f : fType) -> (b' : b'Type) -> (p : Board -> Bool) -> idType f -> 
+       L._∷_ x (L.map f (L.filter p (L.map f b'))) == L._∷_ (f (f x)) (L.map f (L.filter p (L.map f b'))) 
 fId' x f b' p id with (f (f x)) | id x
 fId' x f b' p id | .x | Refl = Refl
 
-fId : (f : fType) -> (b' : b'Type) -> (p : Vec (Vec CellVal boardsize) boardsize -> Bool) -> ((b'' : b''Type) -> f (f b'') == b'') -> L.filter (λ x -> p (f x)) b' == L.map f (L.filter p (L.map f b'))
+fId : (f : fType) -> (b' : b'Type) -> (p : Board -> Bool) -> idType f -> 
+      L.filter (λ x -> p (f x)) b' == L.map f (L.filter p (L.map f b'))
 fId f L.[] p id = Refl
 fId f (L._∷_ x xs) p id with p (f x)
 fId f (L._∷_ x xs) p id | bool with (f (f x)) | id x 
@@ -181,18 +191,25 @@ fId f (L._∷_ x xs) p id | true | .x | Refl  = trans (cong (L._∷_ x) (fId f x
 fId f (L._∷_ x xs) p id | false | .x | Refl = fId f xs p id
 
 
-step1 : (f : fType) -> ((b'' : b''Type ) -> f (f b'') == b'') -> (b : bType) -> 
+step1 : (f : fType) -> idType f -> (b : bType) -> 
         L.filter (λ x -> allVec nodups (f x)) (mcp b) == L.map f (L.filter (allVec nodups) (L.map f (mcp b)))
 step1 f id b = fId f (mcp b) (allVec nodups) id
 
-step2' : (f : (a : Set) -> fType {a}) -> ({b'' : b''Type} -> L.map (f CellVal) (mcp b'') == mcp ((f (L.List CellVal)) b'')) -> (b : bType) ->
+step2' : (f : polyFType) -> mapMcpType f -> (b : bType) ->
          L.map (f CellVal) (L.filter (allVec nodups) (L.map (f CellVal) (mcp b))) == L.map (f CellVal) (L.filter (allVec nodups) (mcp ((f (L.List CellVal)) b)))
 step2' f id b with (L.map (f CellVal) (mcp b)) | (id {b}) 
 step2' f id b | ._ | Refl = Refl
 
-step2 : (f : (a : Set) -> fType {a}) -> (b : bType) -> ((b'' : b''Type ) -> (f CellVal) ((f _) b'') == b'') -> ({b'' : b''Type} -> L.map (f _) (mcp b'') == mcp ((f _) b'')) ->
+step2 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
         L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == L.map (f _) (L.filter (allVec nodups) (mcp ((f _) b)))
-step2 f b id id' = {!trans (step1 (f _) id b) (step2' f id' b)!}
+step2 f b id id' = trans (step1 (f _) id b) (step2' f id' b)
+
+step3' : (f : polyFType) -> (b : bType) -> 
+         L.map (f _) (L.filter (allVec nodups) (mcp ((f _) b))) == L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b))))
+step3' f b = Refl
+
+
+
 
 
 
