@@ -208,6 +208,20 @@ step3' : (f : polyFType) -> (b : bType) ->
          L.map (f _) (L.filter (allVec nodups) (mcp ((f _) b))) == L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b))))
 step3' f b = Refl
 
+step3 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
+        L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b))))
+step3 f b id mapMcp = trans (step2 f b id mapMcp) (step3' f b)
+
+
+-- yeah... no... this is not working out
+help : (n : Nat) -> (p : Board -> Bool) -> (b : Vec (L.List _) n) -> 
+       L.filter (allVec p) (cp' b) == cp' (map (L.filter p) b)
+help .0 p [] = Refl
+help .(suc n) p (_∷_ {n} L.[] xs) = Refl
+help .(suc n) p (_∷_ {n} (L._∷_ x xs) xs') with p x 
+help .(suc n) p (_∷_ {n} (L._∷_ x xs) xs') | true = {!!}
+help .(suc n) p (_∷_ {n} (L._∷_ x xs) xs') | false = {!!}
+
 
 
 
