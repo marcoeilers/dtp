@@ -30,11 +30,81 @@ Department of Information and Computing Sciences}
 \begin{frame}
   \frametitle{Overview}
   \begin{itemize}
-    \item 
+    \item Three approaches to solve Sudokus automatically
+    \item Problems reasoning about the solver in Coq
+    \item Some attempts in Agda
   \end{itemize}
 \end{frame}
 
 
+\begin{frame}[fragile]{First approach}
+  Generate all possible choices and filter the correct results:
+  \begin{lstlisting}
+Definition correct (b:board) : bool :=
+andb3
+  (all nodups (rows b))
+  (all nodups (cols b))
+  (all nodups (boxes b)).
+
+Definition sudoku_naive (b:board) : list board :=
+filter correct (mcp (choices b)).
+  \end{lstlisting}
+  \(\Rightarrow 9^{40} = 147808829414345923316083210206383297601\) possibilities
+\end{frame}
+
+\begin{frame}[fragile]{Second approach}
+  Prune the generated choices first:
+  \begin{lstlisting}
+Definition prune (choices:matrix_choices) :
+  matrix_choices :=
+prune_by boxes (prune_by cols (prune_by rows choices)).  
+
+Definition sudoku_naive_2 (b:board) : list board :=
+filter correct (mcp (prune (choices b))).    
+  \end{lstlisting}
+  That is, remove illegal configurations that arise from fixed entries.
+  \(\Rightarrow 3^{40} = 12157665459056928801\) possibilities
+\end{frame}
+
+\begin{frame}{Third approach}
+  Take one choice at a time:
+  \begin{itemize}
+    \item Find a free entry in the pruned board with minimum number of choices
+    \item Generate new boards from these entries until only single entries are left
+  \end{itemize}
+  
+  Notes:
+  \begin{itemize}
+    \item Very high order
+    \item General recursion required
+    \item Solves a Sudoku in a couple of seconds
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Reasoning in Coq}
+  Reasoning about correctness:
+  \begin{itemize}
+    \item If there is a solution, the solver will find it
+    \item The solver will find all solutions
+    \item Equivalence of all three solvers
+  \end{itemize}
+  
+  Problems:
+  \begin{itemize}
+    \item Constrained data types complicate implementation (e.g. Subtypes or Vectors)
+    \item No meaningful induction over Sudoku boards
+    \item Nested \texttt{map}s are hard to decompose
+    \item The non-trivial solver is incredibly complex
+    \item Correctness is trivially proven in two cases and impossible in the third
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Maybe Agda works better?}
+  \begin{itemize}
+    \item Better support for constrained types
+    \item Easier step-by-step formulations of proofs from the paper possible
+  \end{itemize}
+\end{frame}
 
 \begin{frame}
   \frametitle{Thank you for your attention!}
@@ -43,7 +113,10 @@ Department of Information and Computing Sciences}
 \end{frame}
 
 
-
+%% notes
+% - restrict data types
+% - tried with vectors
+% - proving simple stuff
 
 
 \end{document}
