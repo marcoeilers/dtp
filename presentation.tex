@@ -91,18 +91,32 @@ filter correct (mcp (prune (choices b))).
   
   Problems:
   \begin{itemize}
-    \item Constrained data types complicate implementation (e.g. Subtypes or Vectors)
+    \item Board type $[[CellVal]]$ not specific enough
     \item No meaningful induction over Sudoku boards
     \item Nested \texttt{map}s are hard to decompose
     \item The non-trivial solver is incredibly complex
+    \item Couldn't even prove trivial properties
     \item Correctness is trivially proven in two cases and impossible in the third
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Maybe Agda works better?}
+\begin{frame}{Reasoning in Agda}
+  Our new approach:
   \begin{itemize}
-    \item Better support for constrained types
-    \item Easier step-by-step formulations of proofs from the paper possible
+    \item Focus on trivial versions
+    \item Goal: show equivalence of the two
+    \item New board type is $Vec$ ($Vec$ $CellVal$ $boardsize$) $boardsize$
+    \item Programming with dependent types in Coq is \emph{hard}...
+    \item ... so we wrote the new version in Agda
+  \end{itemize}
+  
+  Main goal: show that 
+  
+  $filter$ $correct$ $\cdot$ $mcp$ = $filter$ $correct$ $\cdot$ $mcp$ $\cdot$ $prune$
+  
+  \begin{itemize}
+    \item Unfortunately, proving properties in Agda is hard as well
+    \item but we're hopeful we can at least prove the important steps of the proof
   \end{itemize}
 \end{frame}
 
