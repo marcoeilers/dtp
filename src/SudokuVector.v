@@ -174,6 +174,12 @@ Fixpoint lmap {A B: Type} (f : A -> B) (l : list A) : list B :=
   | cons x xs => cons (f x) (lmap f xs)
   end.
 
+Fixpoint lfilter {A : Type} (f : A -> bool) (l : list A) : list A :=
+  match l with
+  | nil => nil
+  | cons x xs => if (f x) then (cons x (lfilter f xs)) else (lfilter f xs)
+  end.
+
 Fixpoint cp {A : Type} {n : nat} (v : Vector.t (list A) n) : list (Vector.t A n) :=
   match v with 
   | [] => cons (Vector.nil A) nil
@@ -184,17 +190,19 @@ Fixpoint cp {A : Type} {n : nat} (v : Vector.t (list A) n) : list (Vector.t A n)
 Definition mcp {A : Type} {n m : nat} (cs : Vector.t (Vector.t (list A) m) n) : list (Vector.t (Vector.t A m) n) :=
   cp (Vector.map cp cs).
 
+Fixpoint allVec {A : Type} {n : nat} (f : A -> bool) (v : Vector.t A n) : bool :=
+  match v with
+  | [] => true
+  | x :: xs => if (f x) then (allVec f xs) else false
+  end.
 
-(*
-Definition group {A:Type} (l:list A) := group_by boxsize l.
-
-
-Definition boxes {A:Type} (b:list (list A)) : list (list A) :=
-  map ungroup (ungroup (map cols (group (map group b)))).
-
-
-Example test_boxes_id : boxes (boxes example_board) = example_board.
-Proof. reflexivity. Qed.
-
-*)
+(* We need to prove this for the bigger proof *)
+Theorem help : forall (A : Type) (n : nat) (p : A -> bool) (b : Vector.t (list A) n),
+  lfilter (fun x => allVec p x) (cp b) = cp (Vector.map (fun x => lfilter p x) b).
+Proof with simpl.
+  intros.
+  induction b.
+    simpl. reflexivity.
+    simpl. 
+Admitted.
 
