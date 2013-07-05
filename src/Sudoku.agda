@@ -246,13 +246,25 @@ step3 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
         L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b))))
 step3 f b id mapMcp = trans (step2 f b id mapMcp) (step3' f b)
 
--- yeah... no... this is not working out
-help : {n : Nat} -> (p : _ -> Bool) -> (b : Vec (L.List _) n) -> 
+-- cannot prove this. any implicit assumptions?
+help : {a : Set} {n : Nat} -> (p : a -> Bool) -> (b : Vec (L.List a) n) -> 
        L.filter (allVec p) (cp' b) == cp' (map (L.filter p) b)
 help {n} p b = {!!}
 
+help2 : {n m : Nat} -> (b : Vec (Vec (L.List CellVal) n) m) -> 
+      map (L.filter nodups) (map cp' b) == map (λ x -> L.filter nodups (cp' x)) b
+help2 [] = Refl
+help2 (x ∷ xs) with L.filter nodups (cp' x)
+help2 (x ∷ xs) | fcpx = cong (_∷_ fcpx) (help2 xs)
+
+-- when we pattern match on proof, everything blows up. this is bad.
 step4' : (f : polyFType) -> (b : bType) -> 
          L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b)))) ==         
          L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b)))
-step4' f b with (map cp' ((f _) b))
-step4' f b | test = {!!}
+step4' f b with (L.filter (allVec nodups) (cp' (map cp' ((f _) b)))) | (help nodups (map cp' ((f _) b)))
+step4' f b | .(cp' (map (L.filter nodups) (map cp' ((f _) b)))) | Refl with (map (L.filter nodups) (map cp' ((f _) b))) | help2 (f _ b)
+step4' f b | .(cp' (map (L.filter nodups) (map cp' ((f _) b)))) | Refl | .(map (λ x -> L.filter nodups (cp' x)) (f _ b)) | Refl  = Refl
+
+step4 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
+        L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b)))
+step4 f b id mapMcp = {!trans (step3 f b id mapMcp) (step4' f b)!}
