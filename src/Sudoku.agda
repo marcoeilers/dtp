@@ -249,7 +249,8 @@ step3 f b id mapMcp = trans (step2 f b id mapMcp) (step3' f b)
 -- cannot prove this. any implicit assumptions?
 help : {a : Set} {n : Nat} -> (p : a -> Bool) -> (b : Vec (L.List a) n) -> 
        L.filter (allVec p) (cp' b) == cp' (map (L.filter p) b)
-help {n} p b = {!!}
+help p [] = Refl
+help p (x ∷ xs) = {!!}
 
 help2 : {n m : Nat} -> (b : Vec (Vec (L.List CellVal) n) m) -> 
       map (L.filter nodups) (map cp' b) == map (λ x -> L.filter nodups (cp' x)) b
@@ -257,7 +258,7 @@ help2 [] = Refl
 help2 (x ∷ xs) with L.filter nodups (cp' x)
 help2 (x ∷ xs) | fcpx = cong (_∷_ fcpx) (help2 xs)
 
--- when we pattern match on proof, everything blows up. this is bad.
+
 step4' : (f : polyFType) -> (b : bType) -> 
          L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b)))) ==         
          L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b)))
@@ -267,4 +268,19 @@ step4' f b | .(cp' (map (L.filter nodups) (map cp' ((f _) b)))) | Refl | .(map (
 
 step4 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
         L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b)))
-step4 f b id mapMcp = {!trans (step3 f b id mapMcp) (step4' f b)!}
+step4 f b id mapMcp = trans (step3 f b id mapMcp) (step4' f b)
+
+-- If we manage to prove this, we're awesome. Otherwise I think it would be okay to just assume this.
+reduceProp : {n : Nat} -> (v : Vec (L.List CellVal) n) -> 
+             L.filter nodups (cp' v) == L.filter nodups (cp' (reduce v))
+reduceProp v = {!!}
+
+-- How to prove this? Kind of weird because we have to replace within a lambda expression
+step5' : (f : polyFType) -> (b : bType) -> 
+         L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b))) ==
+         L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' (reduce x))) ((f _) b)))
+step5' f b  = {!!}
+
+step5 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
+        L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' (reduce x))) ((f _) b)))
+step5 f b id mapMcp = trans (step4 f b id mapMcp) (step5' f b)
