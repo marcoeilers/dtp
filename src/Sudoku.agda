@@ -169,13 +169,47 @@ polyFType = (a : Set) -> fType {a}
 mapMcpType : polyFType -> Set
 mapMcpType f = ({b'' : b''Type} -> L.map (f CellVal) (mcp b'') == mcp ((f (L.List CellVal)) b''))
 
+rowsId : {a : Set} -> (b : Vec (Vec a boardsize) boardsize) -> rows (rows b) == b
+rowsId b = Refl
+
 colsId : {a : Set} -> (b : Vec (Vec a boardsize) boardsize) -> cols (cols b) == b
-colsId ((x ∷ xs) ∷ xs') with cols xs'
-colsId ((x' ∷ xs1) ∷ xs') | (x ∷ xs) ∷ xs0 = {!!}
---colsId ((x ∷ x' ∷ x0 ∷ x1 ∷ x2 ∷ x3 ∷ x4 ∷ x5 ∷ x6 ∷ []) ∷ xs') = {!!}
+colsId ((xr1c1 ∷ xr1c2 ∷ xr1c3 ∷ xr1c4 ∷ xr1c5 ∷ xr1c6 ∷ xr1c7 ∷ xr1c8 ∷ xr1c9 ∷ []) ∷
+ (xr2c1 ∷ xr2c2 ∷ xr2c3 ∷ xr2c4 ∷ xr2c5 ∷ xr2c6 ∷ xr2c7 ∷ xr2c8 ∷ xr2c9 ∷ []) ∷
+ (xr3c1 ∷ xr3c2 ∷ xr3c3 ∷ xr3c4 ∷ xr3c5 ∷ xr3c6 ∷ xr3c7 ∷ xr3c8 ∷ xr3c9 ∷ []) ∷
+ (xr4c1 ∷ xr4c2 ∷ xr4c3 ∷ xr4c4 ∷ xr4c5 ∷ xr4c6 ∷ xr4c7 ∷ xr4c8 ∷ xr4c9 ∷ []) ∷
+ (xr5c1 ∷ xr5c2 ∷ xr5c3 ∷ xr5c4 ∷ xr5c5 ∷ xr5c6 ∷ xr5c7 ∷ xr5c8 ∷ xr5c9 ∷ []) ∷
+ (xr6c1 ∷ xr6c2 ∷ xr6c3 ∷ xr6c4 ∷ xr6c5 ∷ xr6c6 ∷ xr6c7 ∷ xr6c8 ∷ xr6c9 ∷ []) ∷
+ (xr7c1 ∷ xr7c2 ∷ xr7c3 ∷ xr7c4 ∷ xr7c5 ∷ xr7c6 ∷ xr7c7 ∷ xr7c8 ∷ xr7c9 ∷ []) ∷
+ (xr8c1 ∷ xr8c2 ∷ xr8c3 ∷ xr8c4 ∷ xr8c5 ∷ xr8c6 ∷ xr8c7 ∷ xr8c8 ∷ xr8c9 ∷ []) ∷
+ (xr9c1 ∷ xr9c2 ∷ xr9c3 ∷ xr9c4 ∷ xr9c5 ∷ xr9c6 ∷ xr9c7 ∷ xr9c8 ∷ xr9c9 ∷ []) ∷ []) = Refl
+
+
+
+boxsId : {a : Set} -> (b : Vec (Vec a boardsize) boardsize) -> boxs (boxs b) == b
+boxsId ((xr1c1 ∷ xr1c2 ∷ xr1c3 ∷ xr1c4 ∷ xr1c5 ∷ xr1c6 ∷ xr1c7 ∷ xr1c8 ∷ xr1c9 ∷ []) ∷
+ (xr2c1 ∷ xr2c2 ∷ xr2c3 ∷ xr2c4 ∷ xr2c5 ∷ xr2c6 ∷ xr2c7 ∷ xr2c8 ∷ xr2c9 ∷ []) ∷
+ (xr3c1 ∷ xr3c2 ∷ xr3c3 ∷ xr3c4 ∷ xr3c5 ∷ xr3c6 ∷ xr3c7 ∷ xr3c8 ∷ xr3c9 ∷ []) ∷
+ (xr4c1 ∷ xr4c2 ∷ xr4c3 ∷ xr4c4 ∷ xr4c5 ∷ xr4c6 ∷ xr4c7 ∷ xr4c8 ∷ xr4c9 ∷ []) ∷
+ (xr5c1 ∷ xr5c2 ∷ xr5c3 ∷ xr5c4 ∷ xr5c5 ∷ xr5c6 ∷ xr5c7 ∷ xr5c8 ∷ xr5c9 ∷ []) ∷
+ (xr6c1 ∷ xr6c2 ∷ xr6c3 ∷ xr6c4 ∷ xr6c5 ∷ xr6c6 ∷ xr6c7 ∷ xr6c8 ∷ xr6c9 ∷ []) ∷
+ (xr7c1 ∷ xr7c2 ∷ xr7c3 ∷ xr7c4 ∷ xr7c5 ∷ xr7c6 ∷ xr7c7 ∷ xr7c8 ∷ xr7c9 ∷ []) ∷
+ (xr8c1 ∷ xr8c2 ∷ xr8c3 ∷ xr8c4 ∷ xr8c5 ∷ xr8c6 ∷ xr8c7 ∷ xr8c8 ∷ xr8c9 ∷ []) ∷
+ (xr9c1 ∷ xr9c2 ∷ xr9c3 ∷ xr9c4 ∷ xr9c5 ∷ xr9c6 ∷ xr9c7 ∷ xr9c8 ∷ xr9c9 ∷ []) ∷ []) = Refl
+
+
+rowsMapHelp : (b' : b'Type) -> L.map rows b' == b'
+rowsMapHelp L.[] = Refl
+rowsMapHelp (L._∷_ x xs) = cong (L._∷_ x) (rowsMapHelp xs)
+
+rowsMapMcp : (b : bType) -> L.map rows (mcp b) == mcp (rows b)
+rowsMapMcp b with  L.map rows (mcp b) | rowsMapHelp (mcp b) 
+rowsMapMcp b | .(mcp b) | Refl = Refl
 
 colsMapMcp : (b : bType) -> L.map cols (mcp b) == mcp (cols b)
 colsMapMcp ((x ∷ xs) ∷ xs') = {!!}
+
+boxsMapMcp : (b : bType) -> L.map boxs (mcp b) == mcp (boxs b)
+boxsMapMcp b = {!!}
 
 fId' : (x : Board) -> (f : fType) -> (b' : b'Type) -> (p : Board -> Bool) -> idType f -> 
        L._∷_ x (L.map f (L.filter p (L.map f b'))) == L._∷_ (f (f x)) (L.map f (L.filter p (L.map f b'))) 
@@ -212,20 +246,14 @@ step3 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
         L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b))))
 step3 f b id mapMcp = trans (step2 f b id mapMcp) (step3' f b)
 
-
 -- yeah... no... this is not working out
-help : (n : Nat) -> (p : Board -> Bool) -> (b : Vec (L.List _) n) -> 
+help : {n : Nat} -> (p : _ -> Bool) -> (b : Vec (L.List _) n) -> 
        L.filter (allVec p) (cp' b) == cp' (map (L.filter p) b)
-help .0 p [] = Refl
-help .(suc n) p (_∷_ {n} L.[] xs) = Refl
-help .(suc n) p (_∷_ {n} (L._∷_ x xs) xs') with p x 
-help .(suc n) p (_∷_ {n} (L._∷_ x xs) xs') | true = {!!}
-help .(suc n) p (_∷_ {n} (L._∷_ x xs) xs') | false = {!!}
+help p [] = Refl
+help p (x ∷ xs) = {!!}
 
-
-
-
-
-
-
-
+step4' : (f : polyFType) -> (b : bType) -> 
+         L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b)))) ==         
+         L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b)))
+step4' f b with (L.filter (allVec nodups) (cp' (map cp' ((f _) b)))) | (help nodups (map cp' ((f _) b)))
+step4' f ((x ∷ xs) ∷ xs') | a | proof = {!!}
