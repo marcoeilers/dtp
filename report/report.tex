@@ -34,14 +34,71 @@
 \section{Problem Description}
 \label{sec:prob-desc}
 % a brief description of the problem you worked on;
+The functional pearl describes multiple ways (with increasing efficiency) to solve the famous Sudoku puzzle automatically. In this report it is assumed that the reader is familiar with the Sudoku puzzle. The pearl aims at providing a solver that works on any \textit{box size} \(N\) such that the size of the Sudoku board is \(N^2 \times N^2\). Hence, even though there are types of Sudoku puzzles that are rectangular but not quadratic, the solver presented in the functional pearl is restricted to work on the quadratic ones only.
+
+In addition to the abstraction over the box size \(N\) the solver does not require the values to be filled in (the \textit{cell values}) to be numbers but only a set of enough distinct elements to solve the puzzle. Also, the symbol to describe blank cells (the ones that are yet to be filled in) can be chosen arbitrarily. While the implementation presented in section~\ref{sec:impl} respects these abstractions, we chose \(N = 3\), the numbers 1 to 9 for the cell values and '.' for blank cells.
+
+There are multiple ways to design an automatic Sudoku solver, the easiest to implement and most naive one being the enumeration of all board configurations and filtering out the invalid ones. This is done by assigning a list of possible cell values to each blank cell in the initial configuration and then generating the \textit{matrix Cartesian product} (MCP) of this board that results in every possible combination of cell values respecting the initial configuration of the puzzle. This approach results in a large number of generated boards; in fact it is claimed that around \(9^{40}\) possible combinations exist.
+
+While certainly delivering correct results, this approach can be improved to generate a lot fewer board combinations which need to be checked for correctness: Instead of generating the MCP using all cell values for each blank cell, one can limit the number of generated boards by only considering cell values for blank cells that do not already violate the Sudoku rules. This means that technically possible choices that do not respect the "duplicate-constraint" in a row, column or \(N \times N\)-box are removed (\textit{pruned}), giving only \(3^{40}\) generated boards to check for correctness.
+
+Since this number is still too large by far to be computed and checked in a reasonable amount of time, a third and completely different approach is considered. Instead of generating all possible board combinations at once, only one blank cell is considered at a time. The idea is that by looking at a blank cell in the puzzle with a minimum number of remaining valid choices for it to be filled and then generating new boards with this cell value fixed (at most 9 for an empty initial board) results in a smaller overall amount of generated boards. The process of generating new partially solved Sudoku puzzles by fixing a cell with fewest choices is called \textit{expansion}.
+
+In the next section each of these three approaches' implementation in Coq will be described in detail.
 
 \section{Implementation in Coq}
 \label{sec:impl}
 % a description of how you implemented the functions from your paper in Coq. What was hard? Is all the recursion structural? Or were there missing case branches? What design decisions did you make at this point;
+The working implementation resides in the files \texttt{Sudoku.v} and \texttt{Misc.v}, the latter one containing auxiliary functions on \texttt{List}s and \texttt{Nat}s and some notations. There are also experimental implementations using \texttt{Vector}s in Coq and in Agda as well to explore the possibilities of constrained types (see section~\ref{sec:reas} for a more in-depth explanation).
+
+\subsection{Misc.v}
+Most of the functions contained here are trivial and do not require explanation that exceeds the comments in the source code itself. However some of them need a little bit of elaboration.
+\begin{itemize}
+  \item \texttt{combine\_prepend}: Since there is no \texttt{zipWith} equivalent in Coq that facilitates prepending each element of one list to each list in another list we implemented this helper function. It takes a list of elements and a list of lists and prepends the \(i\)th element of the first list to the \(i\)th list of the second list.
+  \item \texttt{cp}: This function takes a list of lists and produces a list of all possible pairs of the elements in these two lists (the Cartesian product). E.g. \texttt{cp [[1, 2], [3, 4]] = [[1, 3], [1, 4], [2, 3], [2, 4]]}.
+  \item \texttt{mcp}: This function takes \texttt{cp} a step further by applying the Cartesian product to a list of lists of lists. This is done by first computing all possible pairs of nested lists and then computing the Cartesian product on the result. Note that depending on the size of the lists this may be a very expensive computation.
+\end{itemize}
+
+\subsection{Sudoku.v}
+The implementation starts out with defining constants that have been discussed in section~\ref{sec:prob-desc}, fixing the solver to work with the most common variant of Sudoku: a \(9 \times 9\) puzzle with cell values from 1 to 9. Note that we chose to declare \texttt{cellval} as a type rather than natural numbers to restrict the range of possible values such that reasoning about the structure later on does not become unnecessarily complicated. Custom tests for equality and blankness are provided as well. The \texttt{board} is then defined as a list of \texttt{row}s and a few (partially invalid) example boards are given for testing basic operations on boards.
+
+Throughout the solver utilities are used for destructing the board into its logical parts: \texttt{rows} which just returns the board per definition; \texttt{cols} which transforms a list of \texttt{row}s into a list of \texttt{col}s and \texttt{boxes} which gives the \(N^2\) regions of a Sudoku puzzle. These functions are not restricted to operate on \texttt{cellval}s but rather on any list of lists. This is due to the fact that they have to be used later on with more general functions such that a restriction here is not possible.
+
+For the sake of simplicity \texttt{matrix\_choices} are defined as a list of lists of lists of \texttt{cellval}s. This simply describes a partially solved puzzle where instead of a fixed value for each cell there is a list of possible choices. \texttt{choose} is used while transforming a regular \texttt{board} to \texttt{matrix\_choices} (using \texttt{choices}) by either putting an already fixed cell value in a single element list, or assigning all possible cell values to an empty cell.
+
+The naive approach then computes all possible boards using \texttt{mcp} and \texttt{filter}s the \texttt{correct} ones, where a board is considered correct if there are no duplicates in each row, column and box. Note that the correct criterion could be expanded, e.g. by requiring that all \texttt{cellvals} are used (and not more) and that no blank cells are included. However, by equivalence and design of the algorithm this is not necessary (since all blanks are replaced by all possible cell values). An example call is given on a board that only has very few blanks since this algorithm brings Coq to a grinding halt when run on a regular board (e.g. \texttt{solvable\_board}).
+
+The second approach improves on the first one as described before: the only difference is that the generated choices considered during the MCP computation are pruned first. This is done by \texttt{delete}'ing all values from possible cell values for blank cells that are already \texttt{fixed} in the surrounding region (row, column or box). It is notable that this relatively simple adaption introduces quite some complexity to the solver. The example call for this approach is performed on the same simple board for the same reasons as before.
+
+The remainder of the file is devoted to the third approach. It is best to look at the implementation top-down, i.e. consider \texttt{sudoku} first and then look at the ingredients by scrolling up again. Since the generated solution is a (usually a single-element) list of boards of single cell value list it is necessary to extract these using nested \texttt{map hd} applications. Note that \texttt{Blank} is only given as a type indicator for \texttt{hd} and should never be used since the application is on completely solved boards without blank cells.
+
+\texttt{search} performs the actual work of this approach to solving Sudokus since it identifies a cell with fewest number of possible choices and \texttt{expand}s on it. Since structural recursion on the \texttt{matrix\_choices} is impossible in this case (the recursive call is in the lambda expression for \texttt{map}) and well founded relations are very hard to define (one possibility could be to consider the overall number of remaining choices for a Sudoku, but there might be ties) an artificial natural number argument has been introduced on which structural recursion is performed. While this enabled actual implementation of the function it is certainly not the cleanest and most intuitive solution to this problem. Furthermore it is very hard to estimate how large the initial value for this number needs to be to allow for a sufficient level of recursion to solve the Sudoku completely. However, for the given \texttt{solvable\_board} a value of 6 was sufficient. This means that no search tree had greater depth before the sub-solution was either thrown away because of infeasibility or a solution had been found.
+
+Inside \texttt{search} there are three possible sub-branches (in the non-impossible branch):
+\begin{enumerate}
+  \item The given choices are blocked: there are duplicates or blank cells in the solution, which is thus invalid.
+  \item There are only single element lists of cell values in the board: there is a solution and it can be returned as such.
+  \item The board is not solved yet: generate more choices by expanding on the cell with fewest possible choices and recurse on each pruned choice.
+\end{enumerate}
+
+The second major ingredient is \texttt{expand}. First the number of fewest choices in the current configuration is determined and later used to identify a cell that is expanded upon. This is done by breaking the board in two parts, the first row of the second one containing the desired cell. Next, this row is broken into two again, this time breaking at the cell with fewest number of choices. Based on this splitting new overall boards are generated, each one with a different fixed value for that cell.
+
+\texttt{best} is used to assess that a given list of possible choices is indeed the one with fewest (\(m\)) entries. \texttt{minchoice} returns the length of the shortest list of possible choices (but greater than 1, since that would correspond to a fixed cell) to determine the current minimum number of choices for all cells.
+
+Despite being very complex, \texttt{sudoku} is able to solve a regular board in a matter of seconds by not exploring invalid solutions too much.
 
 \section{Reasoning about the Solver}
 \label{sec:reas}
 % a description of the specification or properties that these functions satisfy. How far did you get with all the proofs? Were there any properties that were especially hard/easy to prove? Did you require any auxiliary lemmas?
+
+% most basic functions are already ridiculously complex: cols, boxes
+% no meaningful induction over boards
+% restriction on basic functions
+% operate on general lists
+% restriction to cellval as a type did not yield immediate advantage
+% equivalence of first two approaches trivial, third one DOWNRIGHT IMPOSSIBLE
+% krücken: hd Blank to make it type check; 1000 for recursion; need to generalize some functions since they're used in complex chains and on other types as well after all 
+% subtypes did not work either
 
 \section{Conclusions and Further Work}
 \label{sec:conc}
