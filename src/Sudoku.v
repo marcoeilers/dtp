@@ -134,15 +134,8 @@ Example test_boxes_id : boxes (boxes example_board) = example_board.
 Proof. reflexivity. Qed.
 
 (*
- * The actual solver
+ * Naive Sudoku Implementation
  *)
-
-(* True if a is a member of l *)
-Fixpoint member (a:cellval) (l:list cellval) : bool :=
-  match l with
-    | [] => false
-    | x :: xs => if cellval_eq x a then true else member a xs
-  end.
 
 (* A matrix of choices, basically a board with a list of possible values
    for each cell *)
@@ -156,9 +149,35 @@ Definition choose (c:cellval) : list cellval :=
 Definition choices (b:board) : matrix_choices :=
   map (map choose) b.
 
-(* Gives the cell values that are already certain (i.e. they are the only choice) *)
-Definition fixed (l:list (list cellval)) : list cellval :=
-  ungroup (filter single l).
+(* True if a is a member of l *)
+Fixpoint member (a:cellval) (l:list cellval) : bool :=
+  match l with
+    | [] => false
+    | x :: xs => if cellval_eq x a then true else member a xs
+  end.
+
+(* True if there are no duplicates in l *)
+Fixpoint nodups (l:list cellval) : bool :=
+  match l with
+    | [] => true
+    | x :: xs => if member x xs then false else nodups xs
+  end.
+
+(* True if the board is correctly solved *)
+Definition correct (b:board) : bool :=
+  andb3 (all nodups (rows b)) (all nodups (cols b)) (all nodups (boxes b)).
+
+Definition sudoku_naive (b:board) : list board :=
+  filter correct (mcp (choices b)).
+
+(* The following gives a Segmentation Fault:
+   Eval compute in sudoku_naive solvable_board.
+ *)
+Eval compute in sudoku_naive almost_solved_board.
+
+(*
+ * Not so naive but still very naive Sudoku Implementation
+ *)
 
 (* Removes a list of fixed entries from the list of choices, used below
    fs : fixed entries, cs : choices *)
@@ -169,6 +188,10 @@ Definition delete (fs:list cellval) (cs:list cellval) : list cellval :=
    fs : fixed entries, cs : choices *)
 Definition remove (fs:list cellval) (cs:list cellval) : list cellval :=
   if single cs then cs else delete fs cs.
+
+(* Gives the cell values that are already certain (i.e. they are the only choice) *)
+Definition fixed (l:list (list cellval)) : list cellval :=
+  ungroup (filter single l).
 
 (* Removes fixed entries from the list of choices *)
 Definition reduce (l:list (list cellval)) : list (list cellval) :=
@@ -183,16 +206,21 @@ Definition prune_by (f:matrix_choices -> matrix_choices) :
 Definition prune (choices:matrix_choices) : matrix_choices :=
   prune_by boxes (prune_by cols (prune_by rows choices)).
 
+Definition sudoku_naive_2 (b:board) : list board :=
+  filter correct (mcp (prune (choices b))).
+
+(* The following gives a Segmentation Fault:
+   Eval compute in sudoku_naive solvable_board.
+ *)
+Eval compute in sudoku_naive_2 almost_solved_board.
+
+(*
+ * The actual solver
+ *)
+
 (* True if any cell has an empty list of choices *)
 Definition void (cm:matrix_choices) : bool :=
   any (any null) cm.
-
-(* True if there are no duplicates in l *)
-Fixpoint nodups (l:list cellval) : bool :=
-  match l with
-    | [] => true
-    | x :: xs => if member x xs then false else nodups xs
-  end.
 
 (* True if there are no duplicates in the matrix of choices *)
 Definition safe (cm:matrix_choices) : bool :=
@@ -272,48 +300,4 @@ Definition count_choices (cm : matrix_choices) : nat :=
     (ungroup (map (map list_size) cm))
     0.
 
-(*
- * Naive Sudoku Implementation
- *)
-
-(* True if the board is correctly solved *)
-Definition correct (b:board) : bool :=
-  andb3 (all nodups (rows b)) (all nodups (cols b)) (all nodups (boxes b)).
-
-Definition sudoku_naive (b:board) : list board :=
-  filter correct (mcp (choices b)).
-
-(* The following gives a Segmentation Fault:
-   Eval compute in sudoku_naive solvable_board.
- *)
-Eval compute in sudoku_naive almost_solved_board.
-
-(*
- * Not so naive but still very naive Sudoku Implementation
- *)
-
-Definition sudoku_naive_2 (b:board) : list board :=
-  filter correct (mcp (prune (choices b))).
-
-(* The following gives a Segmentation Fault:
-   Eval compute in sudoku_naive solvable_board.
- *)
-Eval compute in sudoku_naive_2 almost_solved_board.
-
 End Sudoku.
-
-(*
-  - recursion?
-    - well founded proof by hand
-    - co-inductive types *
-    - predicates, call graphs
-    - axioms
-  - should never happen sections
-    - program fixpoint with bangs ! for branches that never happen
-    - Xmonad, refine and pass around proof arguments
-  - what to prove
-    - sound and complete, if there is a solution then the naive/optimized one will find it
-    - validness of solutions
-    - prune never throws away good solutions
-    - implement brute force approach, reason about that and draw analogies
-*)
