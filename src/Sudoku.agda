@@ -249,11 +249,10 @@ step3 f b id mapMcp = trans (step2 f b id mapMcp) (step3' f b)
 -- yeah... no... this is not working out
 help : {n : Nat} -> (p : _ -> Bool) -> (b : Vec (L.List _) n) -> 
        L.filter (allVec p) (cp' b) == cp' (map (L.filter p) b)
-help p [] = Refl
-help p (x ∷ xs) = {!!}
+help {n} p b = {!!}
 
 step4' : (f : polyFType) -> (b : bType) -> 
          L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b)))) ==         
          L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b)))
-step4' f b with (L.filter (allVec nodups) (cp' (map cp' ((f _) b)))) | (help nodups (map cp' ((f _) b)))
-step4' f ((x ∷ xs) ∷ xs') | a | proof = {!!}
+step4' f b with (map cp' ((f _) b))
+step4' f b | test = {!!}

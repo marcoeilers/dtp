@@ -27,12 +27,19 @@ Notation " [ x , .. , y ] " := (cons _ x _ .. (cons _ y _ (nil _)) ..) : vector_
 
 Open Scope vector_scope.
 
+Inductive list (X:Type) : Type :=
+  | nil :  list X
+  | cons : X -> list X -> list X.
+
+Implicit Arguments nil [[X]].
+Implicit Arguments cons [[X]].
+
 
 Module Sudoku.
 
 (* Constants *)
 Definition boxsize : nat := 3.
-Definition boardsize : nat := boxsize * boxsize.
+Definition boardsize : nat := 9.
 
 Inductive cellval : Type :=
   One | Two | Three | Four | Five | Six | Seven | Eight | Nine | Blank.
@@ -133,8 +140,7 @@ Theorem cols_id : forall (b : board),
   cols (cols b) = b.
 Proof.
   intros b.
-  
-    unfold board in b.
+  unfold board in b.
     unfold row in b.
     simpl in b.
     induction b.
@@ -143,6 +149,41 @@ Proof.
     symmetry.
     rewrite <- IHb.
 Admitted.
+
+Fixpoint member  {n : nat} (v : cellval) (vs : Vector.t cellval n) : bool :=
+  match vs with
+  | Vector.nil => false
+  | x :: xs => if cellval_eq v x then true else member v xs
+  end.
+
+Fixpoint lapp {A : Type} (l1 l2 : list A) : list A :=
+  match l1 with
+  | nil => l2
+  | (cons x xs) => (cons x (lapp xs l2))
+  end.
+
+Fixpoint lconcat {A : Type} (l : list (list A)) : list A :=
+  match l with
+  | nil => nil
+  | cons x xs => lapp x (lconcat xs)
+  end.
+
+Fixpoint lmap {A B: Type} (f : A -> B) (l : list A) : list B :=
+  match l with
+  | nil => nil
+  | cons x xs => cons (f x) (lmap f xs)
+  end.
+
+Fixpoint cp {A : Type} {n : nat} (v : Vector.t (list A) n) : list (Vector.t A n) :=
+  match v with 
+  | [] => cons (Vector.nil A) nil
+  | xs :: xss => lconcat (lmap (fun x => lmap (fun ys => x :: ys) (cp xss)) xs)
+  end.
+
+
+Definition mcp {A : Type} {n m : nat} (cs : Vector.t (Vector.t (list A) m) n) : list (Vector.t (Vector.t A m) n) :=
+  cp (Vector.map cp cs).
+
 
 (*
 Definition group {A:Type} (l:list A) := group_by boxsize l.
