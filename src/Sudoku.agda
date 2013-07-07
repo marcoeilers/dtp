@@ -201,15 +201,15 @@ rowsMapHelp : (b' : b'Type) -> L.map rows b' == b'
 rowsMapHelp L.[] = Refl
 rowsMapHelp (L._∷_ x xs) = cong (L._∷_ x) (rowsMapHelp xs)
 
-rowsMapMcp : (b : bType) -> L.map rows (mcp b) == mcp (rows b)
-rowsMapMcp b with  L.map rows (mcp b) | rowsMapHelp (mcp b) 
-rowsMapMcp b | .(mcp b) | Refl = Refl
+rowsMapMcp : {b : b''Type} -> L.map rows (mcp b) == mcp (rows b)
+rowsMapMcp {b} with  L.map rows (mcp b) | rowsMapHelp (mcp b) 
+rowsMapMcp {b} | .(mcp b) | Refl = Refl
 
-colsMapMcp : (b : bType) -> L.map cols (mcp b) == mcp (cols b)
-colsMapMcp ((x ∷ xs) ∷ xs') = {!!}
+colsMapMcp : {b : b''Type} -> L.map cols (mcp b) == mcp (cols b)
+colsMapMcp {b} = {!!}
 
-boxsMapMcp : (b : bType) -> L.map boxs (mcp b) == mcp (boxs b)
-boxsMapMcp b = {!!}
+boxsMapMcp : {b : b''Type} -> L.map boxs (mcp b) == mcp (boxs b)
+boxsMapMcp {b} = {!!}
 
 fId' : (x : Board) -> (f : fType) -> (b' : b'Type) -> (p : Board -> Bool) -> idType f -> 
        L._∷_ x (L.map f (L.filter p (L.map f b'))) == L._∷_ (f (f x)) (L.map f (L.filter p (L.map f b'))) 
@@ -366,3 +366,27 @@ step9 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
         L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == 
         L.filter (λ x -> allVec nodups ((f _) x)) (mcp (pruneBy (f _) b))
 step9 f b id mapMcp = trans (step8 f b id mapMcp) (step9' f b)
+
+pruneCorrectRows : (b : b''Type) ->
+            L.filter (λ x -> allVec nodups (rows x)) (mcp b) == 
+            L.filter (λ x -> allVec nodups (rows x)) (mcp (pruneBy rows b))
+pruneCorrectRows b = step9 (λ x -> rows {x}) b rowsId rowsMapMcp
+
+pruneCorrectCols : (b : b''Type) ->
+            L.filter (λ x -> allVec nodups (cols x)) (mcp b) == 
+            L.filter (λ x -> allVec nodups (cols x)) (mcp (pruneBy cols b))
+pruneCorrectCols b = step9 (λ x -> cols {x}) b colsId colsMapMcp
+
+pruneCorrectBoxs : (b : b''Type) ->
+            L.filter (λ x -> allVec nodups (boxs x)) (mcp b) == 
+            L.filter (λ x -> allVec nodups (boxs x)) (mcp (pruneBy boxs b))
+pruneCorrectBoxs b = step9 (λ x -> boxs {x}) b boxsId boxsMapMcp
+
+-- now put it all together
+--correct : Board -> Bool
+--correct b = allVec nodups (rows b)  ∧ allVec nodups (cols b)  ∧ allVec nodups (boxs b)
+
+-- proved in Coq, so we can just admit this here
+filterConjunction : (b : L.List Board) -> 
+                    L.filter correct b == L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (boxs x)) b))
+filterConjunction b = {!!}                    
