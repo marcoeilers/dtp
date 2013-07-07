@@ -275,12 +275,42 @@ reduceProp : {n : Nat} -> (v : Vec (L.List CellVal) n) ->
              L.filter nodups (cp' v) == L.filter nodups (cp' (reduce v))
 reduceProp v = {!!}
 
+reduceProp' : {n m : Nat} -> (b : Vec (Vec (L.List CellVal) m) n) ->
+              map (λ x -> L.filter nodups (cp' x)) b ==
+              map (λ x -> L.filter nodups (cp' (reduce x))) b
+reduceProp' [] = Refl
+reduceProp' (x ∷ xs) with (L.filter nodups (cp' x)) | (reduceProp x)
+reduceProp' (x ∷ xs) | ._ | Refl = cong (_∷_ (L.filter nodups (cp' (reduce x)))) (reduceProp' xs)
+
 -- How to prove this? Kind of weird because we have to replace within a lambda expression
 step5' : (f : polyFType) -> (b : bType) -> 
          L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b))) ==
          L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' (reduce x))) ((f _) b)))
-step5' f b  = {!!}
+step5' f b with (map (λ x -> L.filter nodups (cp' x)) ((f _) b)) | reduceProp' ((f _) b) 
+step5' f b | ._ | Refl = Refl
 
 step5 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
-        L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' (reduce x))) ((f _) b)))
+        L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == 
+        L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' (reduce x))) ((f _) b)))
 step5 f b id mapMcp = trans (step4 f b id mapMcp) (step5' f b)
+
+step6' : (f : polyFType) -> (b : bType) -> 
+         L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' (reduce x))) ((f _) b))) ==
+         L.map (f _) (L.filter (allVec nodups) (cp' (map (λ x -> cp' (reduce x)) ((f _) b))))
+step6' f b = {!!}
+
+step7' : (f : polyFType) -> (b : bType) -> 
+         L.map (f _) (L.filter (allVec nodups) (cp' (map (λ x -> cp' (reduce x)) ((f _) b)))) ==
+         L.filter (λ x -> allVec nodups ((f _) x)) (L.map (f _) (mcp (map reduce ((f _) b))))
+step7' f b = {!!}
+
+step8' : (f : polyFType) -> (b : bType) -> mapMcpType f ->
+         L.filter (λ x -> allVec nodups ((f _) x)) (L.map (f _) (mcp (map reduce ((f _) b)))) ==
+         L.filter (λ x -> allVec nodups ((f _) x)) (mcp ((f _) (map reduce ((f _) b))))
+step8' f b mapMcp with (L.map (f _) (mcp (map reduce ((f _) b)))) | (mapMcp {map reduce ((f _) b)}) 
+step8' f b mapMcp | ._ | Refl = Refl
+
+step9' : (f : polyFType) -> (b : bType) -> 
+         L.filter (λ x -> allVec nodups ((f _) x)) (mcp ((f _) (map reduce ((f _) b)))) ==
+         L.filter (λ x -> allVec nodups ((f _) x)) (mcp (pruneBy (f _) b))
+step9' f b = Refl
