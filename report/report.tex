@@ -90,6 +90,9 @@ Despite being very complex, \texttt{sudoku} is able to solve a regular board in 
 \section{Reasoning about the Solver}
 \label{sec:reas}
 % a description of the specification or properties that these functions satisfy. How far did you get with all the proofs? Were there any properties that were especially hard/easy to prove? Did you require any auxiliary lemmas?
+Both naive approaches have been implemented in Agda as well since reasoning about some properties is easier to do than in Coq. Besides the difference in implementation languages the Coq and Agda versions are identical which is why some properties are proven in Coq or Agda only and then assumed to hold in the other version as well.
+
+The extraction operations on boards \texttt{rows}, \texttt{cols} and \texttt{boxes} are involutive. For \texttt{rows} this holds trivially since the board is defined as a list of rows and thus can be returned as-is. For \texttt{cols} and \texttt{boxes} (which uses \texttt{cols}) this is more involved. Intuitively the involution property holds, but formally proving it in Coq turned out to be not feasible which is why this part has been implemented in Agda. However, the general case for \(N^2 \times N^2\) puzzles could not be considered either, instead specific proofs for \(N = 3\) have been formulated. The complexity of proving properties of these core functions of the solver gives an indication about how complex reasoning about properties of the overall solver will be.
 
 % most basic functions are already ridiculously complex: cols, boxes
 % no meaningful induction over boards
@@ -99,6 +102,7 @@ Despite being very complex, \texttt{sudoku} is able to solve a regular board in 
 % equivalence of first two approaches trivial, third one DOWNRIGHT IMPOSSIBLE
 % krücken: hd Blank to make it type check; 1000 for recursion; need to generalize some functions since they're used in complex chains and on other types as well after all 
 % subtypes did not work either
+% step-by-step proofs from paper in agda
 
 \section{Conclusions and Further Work}
 \label{sec:conc}
