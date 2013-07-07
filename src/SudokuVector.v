@@ -206,3 +206,10 @@ Proof with simpl.
     simpl. 
 Admitted.
 
+Theorem filterConjunction : forall (b : list board) (p1 p2 p3 : board -> bool),
+  lfilter p1 (lfilter p2 (lfilter p3 b)) = lfilter (fun x => andb (andb (p2 x) (p3 x)) (p1 x)) b.
+Proof.
+Qed.
+
+
+
