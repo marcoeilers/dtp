@@ -18,6 +18,9 @@ cong f Refl = Refl
 trans : {a : Set} {b c d : a} -> b == c -> c == d -> b == d
 trans Refl Refl = Refl
 
+sym : {a : Set} {b c : a} -> b == c -> c == b
+sym Refl = Refl
+
 eq_nat : Nat -> Nat -> Bool
 eq_nat zero zero = true
 eq_nat zero (suc n) = false
@@ -379,21 +382,75 @@ pruneCorrectBoxs : (b : VecVecABsBs) ->
 pruneCorrectBoxs b = step9 (λ x -> boxs {x}) b boxsId boxsMapMcp
 
 -- now put it all together
+
+-- proved in Coq, so we can just admit this here
+filterConjunction : (a : Set) -> (b : L.List a) -> (p1 p2 p3 : a -> Bool) ->
+                    L.filter p1 (L.filter p2 (L.filter p3 b)) == L.filter (λ x -> p3 x ∧ p2 x ∧ p1 x) b
+filterConjunction a b p1 p2 p3 = {!!}  
+
+    
+filterCorrect : (b : L.List Board) -> 
+                L.filter correct b == L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (rows x)) b))
+filterCorrect b with  L.filter correct b | filterConjunction Board b (λ x -> allVec nodups (boxs x)) (λ x -> allVec nodups (cols x)) (λ x -> allVec nodups (rows x)) 
+filterCorrect b | ._  | Refl  = Refl     
+
+-- proved in Coq, so we can just admit this here
+filterSwap : (a : Set) ->  (b : L.List a) -> (p1 p2 : a -> Bool) ->
+  L.filter p1 (L.filter p2 b) == L.filter p2 (L.filter p1 b)
+filterSwap a b p1 p2 = {!!}
+
 --correct : Board -> Bool
 --correct b = allVec nodups (rows b)  ∧ allVec nodups (cols b)  ∧ allVec nodups (boxs b)
 
--- proved in Coq, so we can just admit this here
-filterConjunction : (b : L.List Board) -> 
-                    L.filter correct b == L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (boxs x)) b))
-filterConjunction b = {!!}      
+filterCorrectMcp : (b : VecVecListABsBs) -> 
+                   L.filter correct (mcp b) == 
+                   L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (rows x)) (mcp b)))
+filterCorrectMcp b = filterCorrect (mcp b)
 
-filterSwap' : (x : Board) -> (xs : L.List Board) -> (p : Board -> Bool) ->
-              (p x == true) -> L.filter p (L._∷_ x xs) == L._∷_ x (L.filter p xs)
-filterSwap' x xs p id with p x
-filterSwap' x xs p Refl | true = Refl
-filterSwap' x xs p () | false 
+addPruneRows : (b : VecVecListABsBs) -> 
+               L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (rows x)) (mcp b))) ==
+               L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (rows x)) (mcp (pruneBy rows b))))
+addPruneRows b = cong (λ y -> L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (cols x)) y)) (pruneCorrectRows b)
 
-filterSwap : (b : L.List Board) -> (p1 p2 : Board -> Bool) ->
-             L.filter p1 (L.filter p2 b) == L.filter p2 (L.filter p1 b)
-filterSwap L.[] p1 p2 = Refl
-filterSwap (L._∷_ x xs) p1 p2  = {!!}
+rearrange1 : (b : VecVecListABsBs) -> 
+             L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (rows x)) (mcp (pruneBy rows b)))) ==
+             L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (mcp (pruneBy rows b))))
+rearrange1 b = cong (λ y -> L.filter (λ x -> allVec nodups (boxs x)) y) (filterSwap _ (mcp (pruneBy rows b)) (λ x -> allVec nodups (cols x)) (λ x -> allVec nodups (rows x)))
+
+addPruneCols : (b : VecVecListABsBs) -> 
+               L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (mcp (pruneBy rows b)))) ==
+               L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (mcp (pruneBy cols (pruneBy rows b)))))
+addPruneCols b = cong (λ y -> L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (rows x)) y)) (pruneCorrectCols (pruneBy rows b))
+
+rearrange2 : (b : VecVecListABsBs) -> 
+             L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (mcp (pruneBy cols (pruneBy rows b))))) ==
+             L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (boxs x)) (mcp (pruneBy cols (pruneBy rows b)))))
+rearrange2 b = trans (filterSwap _ (L.filter (λ x -> allVec nodups (cols x)) (mcp (pruneBy cols (pruneBy rows b)))) (λ x -> allVec nodups (boxs x)) (λ x -> allVec nodups (rows x))) (cong (λ y -> L.filter (λ x -> allVec nodups (rows x)) y) (filterSwap _ (mcp (pruneBy cols (pruneBy rows b))) (λ x -> allVec nodups (boxs x)) (λ x -> allVec nodups (cols x))))
+
+addPruneBoxs : (b : VecVecListABsBs) -> 
+               L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (boxs x)) (mcp (pruneBy cols (pruneBy rows b))))) ==
+               L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (boxs x)) (mcp (pruneBy boxs (pruneBy cols (pruneBy rows b))))))
+addPruneBoxs b = cong (λ y -> L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) y)) (pruneCorrectBoxs (pruneBy cols (pruneBy rows b)))
+
+rearrange3 : (b : VecVecListABsBs) -> 
+             L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (boxs x)) (mcp (pruneBy boxs (pruneBy cols (pruneBy rows b)))))) ==
+             L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (rows x)) (mcp (pruneBy boxs (pruneBy cols (pruneBy rows b))))))
+rearrange3 b = trans (cong (λ y -> L.filter (λ x -> allVec nodups (rows x)) y) (filterSwap _ (mcp (pruneBy boxs (pruneBy cols (pruneBy rows b)))) (λ x -> allVec nodups (cols x)) (λ x -> allVec nodups (boxs x)))) 
+               (trans (filterSwap _ (L.filter (λ x -> allVec nodups (cols x)) (mcp (pruneBy boxs (pruneBy cols (pruneBy rows b))))) (λ x -> allVec nodups (rows x)) (λ x -> allVec nodups (boxs x))) 
+               (cong (λ y -> L.filter (λ x -> allVec nodups (boxs x)) y) (filterSwap _ (mcp (pruneBy boxs (pruneBy cols (pruneBy rows b)))) (λ x -> allVec nodups (rows x)) (λ x -> allVec nodups (cols x))))) 
+
+final : (b : VecVecListABsBs) -> 
+        L.filter (λ x -> allVec nodups (boxs x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (rows x)) (mcp (pruneBy boxs (pruneBy cols (pruneBy rows b)))))) ==
+        L.filter correct (mcp (prune b))
+final b = sym (filterCorrect (mcp (pruneBy boxs (pruneBy cols (pruneBy rows b)))))
+
+equivalence' : (b : VecVecListABsBs) -> 
+                L.filter correct (mcp b) == 
+                L.filter correct (mcp (prune b))
+equivalence' b = trans (filterCorrectMcp b) (trans (addPruneRows b) (trans (rearrange1 b) (trans (addPruneCols b) (trans (rearrange2 b) (trans (addPruneBoxs b) (trans (rearrange3 b) (final b)))))))
+
+equivalence : (b : Board) -> 
+              sudokuNaive b == sudokuNaive2 b
+equivalence b = equivalence' (choices b)
+
+
