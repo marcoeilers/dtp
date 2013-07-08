@@ -9,6 +9,7 @@
 \usepackage{lastpage}
 \usepackage{graphicx}
 \usepackage{listings}
+\usepackage{todonotes}
 
 \lhead{\textbf{A Program to Solve Sudoku}}
 \rhead{(Submission: 08.07.2013)}
@@ -27,6 +28,9 @@
 \author{Marco Eilers - F121763 \and Robert Schmidtke - F121550}
 
 \maketitle
+
+\abstract{This report documents the Coq implementation and verification of a Sudoku solver as described by Richard Bird's functional pearl \emph{A program to solve Sudoku}. The implementation follows closely the Haskell definitions described in the functional pearl. Problems arising from Coq's strictness when using advanced techniques such as general recursion and dependent types are discussed and sometimes alternative approaches in Agda are presented where Agda was easier to use. Two naive implementations and an advanced one are presented, the latter being able to solve a Sudoku puzzle in Coq in a matter of seconds. Verification is mostly restricted to the first two versions because of the complexity of the third approach. }
+
 \newpage
 
 % Basically, your report should provide documentation for your source files. I should be able to read your report, and then look at your source code without having to wonder 'what does is function/lemma/property for?' You can assume I am somewhat familiar with the pearls, but it's probably best to explain too much rather than too little. There is no fixed page length, but I'd expect you need more than two pages, but less than twenty.
@@ -36,13 +40,13 @@
 % a brief description of the problem you worked on;
 The functional pearl describes multiple ways (with increasing efficiency) to solve the famous Sudoku puzzle automatically. In this report it is assumed that the reader is familiar with the Sudoku puzzle. The pearl aims at providing a solver that works on any \textit{box size} \(N\) such that the size of the Sudoku board is \(N^2 \times N^2\). Hence, even though there are types of Sudoku puzzles that are rectangular but not quadratic, the solver presented in the functional pearl is restricted to work on the quadratic ones only.
 
-In addition to the abstraction over the box size \(N\) the solver does not require the values to be filled in (the \textit{cell values}) to be numbers but only a set of enough distinct elements to solve the puzzle. Also, the symbol to describe blank cells (the ones that are yet to be filled in) can be chosen arbitrarily. While the implementation presented in section~\ref{sec:impl} respects these abstractions, we chose \(N = 3\), the numbers 1 to 9 for the cell values and '.' for blank cells.
+In addition to the abstraction over the box size \(N\) the solver does not require the values to be filled in (the \textit{cell values}) to be numbers but only a set of enough distinct elements to solve the puzzle. Also, the symbol to describe blank cells (the ones that are yet to be filled in) can be chosen arbitrarily. While the implementation presented in section~\ref{sec:impl} respects these abstractions, \(N = 3\), the numbers 1 to 9 for the cell values and '.' for blank cells have been chosen.
 
-There are multiple ways to design an automatic Sudoku solver, the easiest to implement and most naive one being the enumeration of all board configurations and filtering out the invalid ones. This is done by assigning a list of possible cell values to each blank cell in the initial configuration and then generating the \textit{matrix Cartesian product} (MCP) of this board that results in every possible combination of cell values respecting the initial configuration of the puzzle. This approach results in a large number of generated boards; in fact it is claimed that around \(9^{40}\) possible combinations exist.
+There are multiple ways to design an automatic Sudoku solver, the easiest to implement and most naive one being the enumeration of all board configurations and filtering out the invalid ones. This is done by assigning a list of possible cell values to each blank cell in the initial configuration and then generating the \textit{matrix Cartesian product} (MCP) of this board that results in every possible combination of cell values respecting the initial configuration of the puzzle. This approach results in a large number of generated boards; in fact it is claimed that around \(9^{40}\) possible combinations exist for a \(9 \times 9\) board with about half the cells filled initially (which is more than usual).
 
 While certainly delivering correct results, this approach can be improved to generate a lot fewer board combinations which need to be checked for correctness: Instead of generating the MCP using all cell values for each blank cell, one can limit the number of generated boards by only considering cell values for blank cells that do not already violate the Sudoku rules. This means that technically possible choices that do not respect the "duplicate-constraint" in a row, column or \(N \times N\)-box are removed (\textit{pruned}), giving only \(3^{40}\) generated boards to check for correctness.
 
-Since this number is still too large by far to be computed and checked in a reasonable amount of time, a third and completely different approach is considered. Instead of generating all possible board combinations at once, only one blank cell is considered at a time. The idea is that by looking at a blank cell in the puzzle with a minimum number of remaining valid choices for it to be filled and then generating new boards with this cell value fixed (at most 9 for an empty initial board) results in a smaller overall amount of generated boards. The process of generating new partially solved Sudoku puzzles by fixing a cell with fewest choices is called \textit{expansion}.
+Since this number is still too large by far to be computed and checked in a reasonable amount of time, a third and completely different approach is considered. Instead of generating all possible board combinations at once, only one blank cell is considered at a time. The idea is that by looking at a blank cell in the puzzle with a minimum number of remaining valid choices for it to be filled and then generating new boards with this cell value fixed (e.g. at most 9 for an empty initial board) results in a smaller overall amount of generated boards. The process of generating new partially solved Sudoku puzzles by fixing a cell with fewest choices is called \textit{expansion}.
 
 In the next section each of these three approaches' implementation in Coq will be described in detail.
 
@@ -54,21 +58,21 @@ The working implementation resides in the files \texttt{Sudoku.v} and \texttt{Mi
 \subsection{Misc.v}
 Most of the functions contained here are trivial and do not require explanation that exceeds the comments in the source code itself. However some of them need a little bit of elaboration.
 \begin{itemize}
-  \item \texttt{combine\_prepend}: Since there is no \texttt{zipWith} equivalent in Coq that facilitates prepending each element of one list to each list in another list we implemented this helper function. It takes a list of elements and a list of lists and prepends the \(i\)th element of the first list to the \(i\)th list of the second list.
+  \item \texttt{combine\_prepend}: Since there is no \texttt{zipWith} equivalent in Coq that facilitates prepending each element of one list to each list in another list this helper function has been implemented. It takes a list of elements and a list of lists and prepends the \(i\)th element of the first list to the \(i\)th list of the second list.
   \item \texttt{cp}: This function takes a list of lists and produces a list of all possible pairs of the elements in these two lists (the Cartesian product). E.g. \texttt{cp [[1, 2], [3, 4]] = [[1, 3], [1, 4], [2, 3], [2, 4]]}.
   \item \texttt{mcp}: This function takes \texttt{cp} a step further by applying the Cartesian product to a list of lists of lists. This is done by first computing all possible pairs of nested lists and then computing the Cartesian product on the result. Note that depending on the size of the lists this may be a very expensive computation.
 \end{itemize}
 
 \subsection{Sudoku.v}
-The implementation starts out with defining constants that have been discussed in section~\ref{sec:prob-desc}, fixing the solver to work with the most common variant of Sudoku: a \(9 \times 9\) puzzle with cell values from 1 to 9. Note that we chose to declare \texttt{cellval} as a type rather than natural numbers to restrict the range of possible values such that reasoning about the structure later on does not become unnecessarily complicated. Custom tests for equality and blankness are provided as well. The \texttt{board} is then defined as a list of \texttt{row}s and a few (partially invalid) example boards are given for testing basic operations on boards.
+The implementation starts out with defining constants that have been discussed in section~\ref{sec:prob-desc}, fixing the solver to work with the most common variant of Sudoku: a \(9 \times 9\) puzzle with cell values from 1 to 9. Note that \texttt{cellval} has been chosen to be declared as a type rather than natural numbers to restrict the range of possible values such that reasoning about the structure later on does not become unnecessarily complicated. Custom tests for equality and blankness are provided as well. The \texttt{board} is then defined as a list of \texttt{row}s and a few (partially invalid) example boards are given for testing basic operations on boards.
 
-Throughout the solver utilities are used for destructing the board into its logical parts: \texttt{rows} which just returns the board per definition; \texttt{cols} which transforms a list of \texttt{row}s into a list of \texttt{col}s and \texttt{boxes} which gives the \(N^2\) regions of a Sudoku puzzle. These functions are not restricted to operate on \texttt{cellval}s but rather on any list of lists. This is due to the fact that they have to be used later on with more general functions such that a restriction here is not possible.
+Throughout the solver utilities are used for destructing the board into its logical parts: \texttt{rows} which just returns the board per definition; \texttt{cols} which transforms a list of \texttt{row}s into a list of \texttt{col}s (effectively computing the transpose) and \texttt{boxes} which gives the \(N^2\) regions of a Sudoku puzzle. These functions are not restricted to operate on \texttt{cellval}s but rather on any list of lists. This is due to the fact that they have to be used later on with more general functions such that a restriction here is not possible.
 
 For the sake of simplicity \texttt{matrix\_choices} are defined as a list of lists of lists of \texttt{cellval}s. This simply describes a partially solved puzzle where instead of a fixed value for each cell there is a list of possible choices. \texttt{choose} is used while transforming a regular \texttt{board} to \texttt{matrix\_choices} (using \texttt{choices}) by either putting an already fixed cell value in a single element list, or assigning all possible cell values to an empty cell.
 
 The naive approach then computes all possible boards using \texttt{mcp} and \texttt{filter}s the \texttt{correct} ones, where a board is considered correct if there are no duplicates in each row, column and box. Note that the correct criterion could be expanded, e.g. by requiring that all \texttt{cellvals} are used (and not more) and that no blank cells are included. However, by equivalence and design of the algorithm this is not necessary (since all blanks are replaced by all possible cell values). An example call is given on a board that only has very few blanks since this algorithm brings Coq to a grinding halt when run on a regular board (e.g. \texttt{solvable\_board}).
 
-The second approach improves on the first one as described before: the only difference is that the generated choices considered during the MCP computation are pruned first. This is done by \texttt{delete}'ing all values from possible cell values for blank cells that are already \texttt{fixed} in the surrounding region (row, column or box). It is notable that this relatively simple adaption introduces quite some complexity to the solver. The example call for this approach is performed on the same simple board for the same reasons as before.
+The second approach improves on the first one as described before: the only difference is that the generated choices considered during the MCP computation are pruned first. This is done by \texttt{delete}'ing all values from possible cell values for blank cells that are already \texttt{fixed} (i.e. are singleton lists and thus the only remaining choice for that cell) in the surrounding region (row, column or box). It is notable that this relatively simple adaption introduces quite some complexity to the solver. The example call for this approach is performed on the same simple board for the same reasons as before.
 
 The remainder of the file is devoted to the third approach. It is best to look at the implementation top-down, i.e. consider \texttt{sudoku} first and then look at the ingredients by scrolling up again. Since the generated solution is a (usually a single-element) list of boards of single cell value list it is necessary to extract these using nested \texttt{map hd} applications. Note that \texttt{Blank} is only given as a type indicator for \texttt{hd} and should never be used since the application is on completely solved boards without blank cells.
 
@@ -90,9 +94,47 @@ Despite being very complex, \texttt{sudoku} is able to solve a regular board in 
 \section{Reasoning about the Solver}
 \label{sec:reas}
 % a description of the specification or properties that these functions satisfy. How far did you get with all the proofs? Were there any properties that were especially hard/easy to prove? Did you require any auxiliary lemmas?
-Both naive approaches have been implemented in Agda as well since reasoning about some properties is easier to do than in Coq. Besides the difference in implementation languages the Coq and Agda versions are identical which is why some properties are proven in Coq or Agda only and then assumed to hold in the other version as well.
+Both naive approaches have been implemented in Agda as well since reasoning about some properties is easier to do than in Coq. Besides the difference in implementation languages the Coq and Agda versions are identical which is why some properties are proven in either Coq or Agda and then assumed to hold in the other version as well.
 
+\subsection{Specifications and Properties}
 The extraction operations on boards \texttt{rows}, \texttt{cols} and \texttt{boxes} are involutive. For \texttt{rows} this holds trivially since the board is defined as a list of rows and thus can be returned as-is. For \texttt{cols} and \texttt{boxes} (which uses \texttt{cols}) this is more involved. Intuitively the involution property holds, but formally proving it in Coq turned out to be not feasible which is why this part has been implemented in Agda. However, the general case for \(N^2 \times N^2\) puzzles could not be considered either, instead specific proofs for \(N = 3\) have been formulated. The complexity of proving properties of these core functions of the solver gives an indication about how complex reasoning about properties of the overall solver will be.
+
+No further specifications for the functions used in the first naive implementation are given. Since all possible configurations are generated and only the correct ones are filtered, it is guaranteed that the naive approach finds all possible solutions and does not discard valid solutions. The second approach is very similar but has one important difference: intermediate solutions are pruned to eliminate invalid configurations before filtering for correct results. So for the second approach to be correct and equivalent to the first one, the following must hold:\todo{Wie weit sind wir hiermit?}
+\begin{align*}
+  filter~correct \cdot mcp \cdot choices &= filter~correct \cdot mcp \cdot prune \cdot choices\\
+  \Rightarrow filter~correct \cdot mcp &= filter~correct \cdot mcp \cdot prune
+\end{align*}
+
+This says that pruning generated choices of the board produces the same overall solutions because only choices are pruned that would be discarded by the correctness filter anyway. In order to prove this, multiple laws that must hold have to be introduced:
+\begin{align}
+  &filter~(p \cdot f) = map~f \cdot filter~p \cdot map~f\\
+  &filter~(all~p) \cdot cp = cp \cdot map~(filter~p)\\
+  &map~f \cdot mcp = mcp \cdot f~~\text{for \(f \in \{rows,cols,boxes\}\)}\\
+  &filter~nodups \cdot cp = filter~nodups \cdot cp \cdot reduce
+\end{align}
+
+\begin{enumerate}
+  \item The first law is valid if \(f \cdot f = id\), in particular if \(f\) is either \(rows\), \(cols\) or \(boxes\). This law has been proven for \(N = 3\) in Agda.
+  \item This law states that if lists from a Cartesian product are wanted for which all elements satisfy \(p\), they can be obtained by computing the Cartesian product on component lists whose elements satisfy \(p\). \todo{unbewiesen}
+  \item These three laws are intuitively clear and are not verified.
+  \item The fourth law is the crucial property of \(reduce\): filtering lists from the Cartesian product which do not contain duplicates yields the same result as removing already fixed entries in a region from the possible choices for a cell value. \todo{unbewiesen}
+\end{enumerate}
+
+For the last approach no further specifications are given for the functions that are being used. As a generalization of the important fact that pruning does not discard valid solutions, soundness and completeness of the implemented solver are properties that would be helpful to be verified. More specifically it is necessary to verify that given a valid Sudoku puzzle (since no validation is performed as it is assumed that only valid Sudoku puzzles are passed in as arguments) the solver finds all (if there exist any) solutions to the puzzle and only those. \todo{Stimmt das überhaupt?}
+
+For the first naive approach this trivially holds since all possible configurations respecting the initial setup of the puzzle are generated and only valid solutions are kept. By the equivalence proof that pruning choices before computing the MCP does not discard valid solutions the property also holds for the second naive approach. Since the third and more sophisticated implementation does not rely on exhaustively generating configurations and filtering correct ones, the equivalence proof cannot be given.
+
+Instead it would be preferable to do quantification of all valid boards and do induction over those. This yields multiple problems. First of all a generator for valid boards is needed that is independent of the solver itself. Second, doing meaningful induction of Sudoku boards is not possible since they are not decomposable in a straightforward way. Third, properties of the solver have to be proven at the highest abstraction of the solver (i.e. for the function \texttt{sudoku}), since it is only here that premises to the solution approach (validity of the puzzle) hold, as they are destructed, processed and reassembled in non-trivial ways at lower levels of the solver. As mentioned earlier, the component functions of the solver need to have rather general signatures for them to be applied to intermediate results during the solution computation. This further complicates stating precise specifications for each function (consider the case where a board is processed recursively: already after the first definition the board is no longer a valid board but only a list of lists which needs to be reflected in the argument definition).
+
+Because of these reasons the focus of proving properties of the implemented approaches has been put on the first two naive implementations. More specifically, the prune-equivalence proof has been attempted by proving the 4 laws needed to show analogousness of the first two approaches. \todo{Etwas ranten wie kompliziert die step-by-step proofs sind wenn cp und mcp vorkommt}
+
+\subsection{Notes}
+Implementing functions that satisfy specifications has been attempted by introducing constraints on the input arguments where possible:
+\begin{itemize}
+  \item Instead of allowing arbitrary Ascii characters for cell values, a dedicated type has been introduced. This was done hoping the restriction would come in handy later on but has not been found particularly useful after all since reasoning about individual cells was not performed.
+  \item Vectors of fixed length have been used instead of a loose list-of-lists representation for boards. This approach worked well in Agda for the two naive approaches, but using dependent types along with recursion turned out to be too much of an effort in Coq which is why the Vector implementation has only been completed in Agda.
+  \item A similar situation arose when using Subtyping in Coq: it is very hard to write down exact specifications that are also met under recursion criteria, and then many goals are generated even for the basic functions at the core of the solver. Again the fact that specifications hold mostly on higher abstraction levels only since the component functions are rather versatile in their applications made it hard to define properties for every function of the non-trivial solver.
+\end{itemize}
 
 % most basic functions are already ridiculously complex: cols, boxes
 % no meaningful induction over boards
@@ -107,5 +149,26 @@ The extraction operations on boards \texttt{rows}, \texttt{cols} and \texttt{box
 \section{Conclusions and Further Work}
 \label{sec:conc}
 % a conclusion, reflecting on your work. What would be needed to finish this project? What would you do differently next time?
+There are multiple reasons to why implementing and verifying the Sudoku solver in Coq is hard:
+\begin{itemize}
+  \item Properties and specifications of the overall solver are hard to break down for individual component functions.
+  \item Advanced general recursion is not easily implemented and it is not even sure if there exists a better implementation approach to \texttt{search}. Introducing dependent types (e.g. \texttt{Vector}s instead of \texttt{List}s) complicates this matter even further.
+  \item As the non-trivial solver is of very high order reasoning about arguments to low-level functions with respect to the argument passed in to the solver is not straightforward.
+\end{itemize}
+
+The problem of solving Sudoku puzzles automatically seems to be a nice functional pearl and the Haskell implementations are elegant and short. Given the nature of the Coq framework it turns out that Coq is not ideal for general functional programming (e.g. requirements of functions to be total and quite restricted recursion). It is because of this that the Coq implementation sometimes lacks functional elegance: general recursion had to be defined introducing an artificial parameter on which structural recursion is performed (which in turn made reasoning about the recursion not logical but purely structural); impossible branches could not be eliminated by constraining input arguments; additional arguments (although not sensible) had to be provided for successful type checking (e.g. \texttt{hd Blank} in the non-trivial \texttt{sudoku} function). On the other hand, reasoning and proving properties of basic functions is easy and well supported.
+
+Since functional programming in Agda is easier because of the better support of dependent types, implementing the naive solvers using constrained data types has been less of an effort. Also, while proving properties in Agda is not as intuitive as in Coq, it turned out that the step-by-step proofs that are given for important laws in the paper could be translated to Agda more or less straightforwardly. \todo{Oder nicht?}
+
+As a result of the complexity of the problem, the strictness of the Coq framework and involved proving techniques in Agda the solution presented resembles a mixed approach cherry-picking from the advantages of theoretical reasoning in the paper, Coq's interactive and straightforward proving mechanisms and Agda's support of dependent types and functional programming. While some Lemmas were straightforward to prove in Coq, it was not easily done in Agda and vice versa. That is why multi-step and bigger proofs consist of statements proven in Coq and Agda and sometimes claims from the paper to form a reasoning about the solver that is as complete as possible. Because of the functional programming restrictions in Coq and involved proving in Agda it was not feasible to construct an isolated complete proof of advanced properties in either Coq or Agda.
+
+What has been discussed rather informally so far can be stated as clear facts of what needs to be done to finish the project and alternative solution approaches if the project was to be repeated:
+\begin{itemize}
+  \item Use Coq more often to prove properties. Even if implementation of functions in Coq is harder at times than in Agda, it pays off when it comes to proving specifications as using Agda's proof system is complicated. Effort could have been reduced here.
+  \item Discover and think about effects of implicit assumptions on the overall system early: require Sudoku puzzles as \(9 \times 9\) matrices from the start rather than trying to be as generic as possible to simplify proofs. The authors of the functional pearl were not concerned with computer assisted proofs of their solution which is why they support general \(N^2 \times N^2\) Sudoku puzzles. Restricting the scope of the Coq implementation to fixed size Sudoku puzzles with as clear a specification as possible is a better way to approach the verification problem.
+  \item Do not underestimate how difficult it is to reason about 2 or sometimes 3 levels of nested lists or vectors. The more general the underlying data structure is, the more general the functions applied to them have to be which in turn introduces many unnecessary and complicated cases when reasoning about the properties of these functions.
+\end{itemize}
+
+To summarize, in most cases it was not hard to transfer the Haskell definitions of the functions presented into Coq. However, general and advanced proofs are difficult to handle in one system only which is why there is usually a claim from the original paper involved as well as partial proofs in Coq and Agda. Defining properties of the problem early in the process and rigorous adherence to them is a promising way of verifying the solver solely and extensively in Coq.
 
 \end{document}
