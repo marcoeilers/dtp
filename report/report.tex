@@ -99,7 +99,7 @@ Despite being quite complex, \texttt{sudoku} is able to solve a regular board in
 An incomplete implementation of the naive solvers which uses \texttt{Vector}s can be found in the file \texttt{SudokuVector.v}. It contains no executable Sudoku solver and is mainly included for completeness. The reasons for starting and abandoning this implementation will be explained below.
 
 \subsection{Implementation in Agda}
-The file \texttt{Sudoku.agda} contains a full implementation of the two naive Sudoku solvers using vectors as well as a mostly complete proof of their equivalence.
+The file \texttt{Sudoku.agda} contains a full implementation of the two naive Sudoku solvers using vectors as well as a mostly complete proof of their equivalence. Please note that loading this file in Emacs may take a long time (or at least does so on our computers) for reasons we do not quite understand.
 
 It starts by defining some utility functions which are used in the later proofs, \texttt{cong}, \texttt{trans} and \texttt{sym}, as well as some functions for working with vectors.
 
