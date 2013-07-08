@@ -107,8 +107,7 @@ member a (x ∷ xs) = if eq_nat a x then true else member a xs
 -- Returns a list of all possible CellVals if the given value is blank,
 -- and a list containing only the current value otherwise
 choose : CellVal -> L.List CellVal 
-choose zero = toList cellVals
-choose (suc n') = L._∷_ (suc n') L.[]
+choose c = if blank c then toList cellVals else L._∷_ c L.[]
 
 -- Computes all possible choices for all cells of a board
 choices : Board -> MatrixChoices
@@ -177,6 +176,8 @@ prune cs = pruneBy boxs (pruneBy cols (pruneBy rows cs))
 -- Slightly less naive Sudoku solver
 sudokuNaive2 : Board -> L.List Board
 sudokuNaive2 b = L.filter correct (mcp (prune (choices b)))
+
+-- Proof of equivalence
 
 -- Some type abbreviations 
 fType : {a : Set} -> Set

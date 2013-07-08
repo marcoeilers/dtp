@@ -89,13 +89,21 @@ The second major ingredient is \texttt{expand}. First the number of fewest choic
 
 \texttt{best} is used to assess that a given list of possible choices is indeed the one with fewest (\(m\)) entries. \texttt{minchoice} returns the length of the shortest list of possible choices (but greater than 1, since that would correspond to a fixed cell) to determine the current minimum number of choices for all cells.
 
-Despite being very complex, \texttt{sudoku} is able to solve a regular board in a matter of seconds by not exploring invalid solutions too much.
+Despite being quite complex, \texttt{sudoku} is able to solve a regular board in a matter of seconds by not exploring invalid solutions too much.
 
 \subsection{SudokuVector.v}
-MARCO
+An incomplete implementation of the naive solvers which uses \texttt{Vector}s can be found in the file \texttt{SudokuVector.v}. It contains no executable Sudoku solver and is mainly included for completeness. The reasons for starting and abandoning this implementation will be explained below.
 
 \subsection{Implementation in Agda}
-MARCO
+The file \texttt{Sudoku.agda} contains a full implementation of the two naive Sudoku solvers using vectors as well as a mostly complete proof of their equivalence.
+
+It starts by defining some utility functions which are used in the later proofs, \texttt{cong}, \texttt{trans} and \texttt{sym}, as well as some functions for working with vectors.
+
+The following definitions are similar to those found in the Coq version, except that vectors are used whereever possible instead of lists. Function and type names are the same as or very similar to the Coq version modulo differences in naming conventions (e.g. starting type names with capital letters in Agda where Coq uses small letters). 
+
+As in the Coq implementation, \texttt{sudokuNaive} and \texttt{sudokuNaive2} are the functions corresponding to the first two versions of the solver.
+
+The equivalence proof following these definition will be discussed below.
 
 \section{Reasoning about the Solver}
 \label{sec:reas}
