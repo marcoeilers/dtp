@@ -273,6 +273,32 @@ Definition sudoku (b:board) : list board :=
 
 Eval compute in sudoku solvable_board.
 
+(* Alternative approach to search *)
+Require Import Program.
+
+(* Counts the choices in a matrix*)
+Program Definition count_choices (cm : matrix_choices) : nat :=
+  fold_left
+    (fun sum x : nat => if ble_nat x 1 then sum else sum + x)
+    (ungroup (map (map list_size) cm))
+    0.
+
+(* Search based on the reduction of matrix choices *)
+Program Fixpoint search' (cm:matrix_choices) {measure (count_choices cm)} :
+  list matrix_choices :=
+  if dec (blocked cm) then []
+  else if dec (all (all single) cm) then [cm]
+  else ungroup (map (fun x:matrix_choices => search' (prune x)) (expand cm)).
+
+  Next Obligation.
+    (* Relation between cm and x is totally missing *)
+  Admitted.
+
+Definition sudoku' (b:board) : list board :=
+  map (map (map (hd Blank))) (search' (prune (choices b))).
+
+Eval compute in sudoku' solvable_board.
+
 (*
  * Reasoning about sudoku
  *)
@@ -292,12 +318,5 @@ Lemma boxes_id : forall (b:board),
 Proof.
   (* TODO *)
 Admitted.
-
-(* Counts the choices in a matrix*)
-Definition count_choices (cm : matrix_choices) : nat :=
-  fold_left
-    (fun sum x : nat => if ble_nat x 1 then sum else sum + x)
-    (ungroup (map (map list_size) cm))
-    0.
 
 End Sudoku.
