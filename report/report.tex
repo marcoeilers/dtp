@@ -118,26 +118,27 @@ Bird gives several other properties that must hold for the functions used in the
 
 The first two laws are valid if \(f \cdot f = id\), in particular if \(f\) is either \(rows\), \(cols\) or \(boxes\).
 The third law states that if lists from a Cartesian product are wanted for which all elements satisfy \(p\), they can be obtained by computing the Cartesian product on component lists whose elements satisfy \(p\).
-The fifth law is the crucial property of \(reduce\): filtering lists from the Cartesian product which do not contain duplicates yields the same result as removing already fixed entries in a region from the possible choices for a cell value.
+The fifth law is the crucial property of \(reduce\): filtering lists from the Cartesian product which do not contain duplicates yields the same result as removing already fixed entries in a region from the possible choices for a cell value. 
+
+Bird simply assumes that the above statements hold without proving any of them. One goal of our verification could therefore be to prove these five assumptions as well as the involution property of the extraction operations.
 
 For the last approach no further specifications are given for the functions that are being used. 
 
-Since all possible configurations are generated and only the correct ones are filtered, it is guaranteed that the naive approach finds all possible solutions and does not discard valid solutions. The second approach is very similar but has one important difference: intermediate solutions are pruned to eliminate invalid configurations before filtering for correct results. So for the second approach to be correct and equivalent to the first one, the following must hold:\todo{Wie weit sind wir hiermit?}
+In addition to that, it would be reasonable to show that all three versions are both sound and complete, meaning that
+\begin{enumerate}
+  \item for all input boards, the resulting list contains only valid solutions of the input board, and
+  \item for all input boards, he resulting list contains \emph{all} valid solutions (if any) of the input board.
+\end{enumerate}
+
+For the naive approach, this is very simple: Since all possible configurations are generated and only the correct ones are filtered, it is guaranteed that the naive approach finds only possible solutions and does not discard valid solutions. The second approach is very similar but has one important difference: intermediate solutions are pruned to eliminate invalid configurations before filtering for correct results. So for the second approach to be sound and complete, it would suffice to show that it is equivalent to the first one. For this to be the case, the following must hold:
 \begin{align*}
   filter~correct \cdot mcp \cdot choices &= filter~correct \cdot mcp \cdot prune \cdot choices\\
   \Rightarrow filter~correct \cdot mcp &= filter~correct \cdot mcp \cdot prune
 \end{align*}
 
-This says that pruning generated choices of the board produces the same overall solutions because only choices are pruned that would be discarded by the correctness filter anyway. In order to prove this, multiple laws that must hold have to be introduced:
+This says that pruning generated choices of the board produces the same overall solutions because only choices are pruned that would be discarded by the correctness filter anyway. Bird proves this in his paper using the facts stated above.
 
-
-As a generalization of the important fact that pruning does not discard valid solutions, soundness and completeness of the implemented solver are properties that would be helpful to be verified. More specifically it is necessary to verify that given a valid Sudoku puzzle (since no validation is performed as it is assumed that only valid Sudoku puzzles are passed in as arguments) the solver finds all (if there exist any) solutions to the puzzle and only those. \todo{Stimmt das überhaupt?}
-
-For the first naive approach this trivially holds since all possible configurations respecting the initial setup of the puzzle are generated and only valid solutions are kept. By the equivalence proof that pruning choices before computing the MCP does not discard valid solutions the property also holds for the second naive approach. Since the third and more sophisticated implementation does not rely on exhaustively generating configurations and filtering correct ones, the equivalence proof cannot be given.
-
-Instead it would be preferable to do quantification of all valid boards and do induction over those. This yields multiple problems. First of all a generator for valid boards is needed that is independent of the solver itself. Second, doing meaningful induction of Sudoku boards is not possible since they are not decomposable in a straightforward way. Third, properties of the solver have to be proven at the highest abstraction of the solver (i.e. for the function \texttt{sudoku}), since it is only here that premises to the solution approach (validity of the puzzle) hold, as they are destructed, processed and reassembled in non-trivial ways at lower levels of the solver. As mentioned earlier, the component functions of the solver need to have rather general signatures for them to be applied to intermediate results during the solution computation. This further complicates stating precise specifications for each function (consider the case where a board is processed recursively: already after the first definition the board is no longer a valid board but only a list of lists which needs to be reflected in the argument definition).
-
-Because of these reasons the focus of proving properties of the implemented approaches has been put on the first two naive implementations. More specifically, the prune-equivalence proof has been attempted by proving the 4 laws needed to show analogousness of the first two approaches. \todo{Etwas ranten wie kompliziert die step-by-step proofs sind wenn cp und mcp vorkommt}
+Since the third and more sophisticated implementation does not rely on exhaustively generating configurations and filtering correct ones, the equivalence proof would be more complicated. Bird only gives an outline of what such a proof might look like. 
 
 \subsection{Verification}
 Proving the soundness of the two naive approaches is trivial. Since incorrect solutions are filtered out as the last step in both of them, the resulting list can only contain correct ones. A (very short) formal proof of this in Coq can be found in TODO.
@@ -147,7 +148,7 @@ While this was simple, soundness for the efficient implementation, completeness 
   \item Representing Sudoku boards as lists of lists of cell values is not specific enough. Many of our functions expect inputs of size \(N^2 \times N^2\). For these functions, the properties we want to prove simply do not hold for lists of lists of any length. Even the most basic functions, like \texttt{rows} and \texttt{cols}, do not behave the way we need them to if list lengths are not restricted.
   \item There is no meaningful way to perform induction over Sudoku boards. If rows or columns are added or removed arbitrarily, the resulting matrix ceases to be a valid Sudoku board. While it is possible to perform induction over the box size $N$ of Sudoku boards, this does not actually help with proving anything.
   \item Generally, it can be hard to prove properties of functions dealing with nested lists. This is especially the case if a function's return value depends on values from different levels of the list hierarchy. We will see an example of this later.
-  \item The third implementation is much more complex than the two naive ones, and works quite differently internally. Since Bird does not prove its correctness in any detail in the paper, we also have very few specifications for the functions it uses. Therefore we would have to resort to proving the soundness or completeness of the function as a whole.
+  \item The third implementation is much more complex than the two naive ones, and works quite differently internally. Since Bird does not prove its correctness in any detail in the paper, we also have very few specifications for the functions it uses. These functions destruct, process and reassemble solutions in various non-trivial ways which do not allow us to check their correctness directly, which is why we would have to resort to proving the soundness or completeness of the solver as a whole.
   \item In addition to that, the third approach uses \texttt{search}, which, as discussed before, contains both an unreachable branch and an additional numerical parameter to allow for general recursion. This, as well as any other way of dealing with those two problems, makes it much harder to prove any properties about it.
 \end{enumerate}
 
@@ -160,12 +161,40 @@ As a result of these problems, we decided to restrict our proofs in several ways
 
 While trying to prove properties of the new implementations, we soon discovered that Coq's ability to reason about dependently typed values is quite limited. When performing induction on a board (i.e. a vector of vectors of cell values, with both vectors having length \texttt{boardsize}), for example, Coq generated a case for an empty vector, although \texttt{boardsize} was defined as 9, and the vector therefore could not be empty. After unfolding the definition of \texttt{boardsize}, however, Coq completely refused to destruct the board. This and some other problems convinced us that it would be easier to use Agda for our main proof.
 
+\subsubsection{Proving Bird's assumptions}
+In order to reproduce Bird's equivalence proof, we first needed to prove his assumptions about the functions used in the Sudoku solvers. We were successful to a certain degree, but could not prove all of them. For the proofs of (1) and (2), see TODO and TODO in \texttt{Sudoku.agda}. We could also prove the involution property of the extraction operations (see TODO, TODO and TODO), though the proofs for the latter are a bit of a hack, and we managed to prove (4) for \texttt{rows} only (see TODO). We did not manage to prove (3) and (5), as well as (4) for \texttt{cols} and \texttt{boxs}. The main problem in all these cases were the functions \texttt{cp} (and \texttt{mcp}, which uses \texttt{cp}). The function looks like this:
+\lstset{
+  literate={λ}{{$\lambda$}}1
+}
+\begin{lstlisting}
+cp : {a : Set} {n : Nat} -> Vec (L.List a) n 
+       -> L.List (Vec a n)
+cp [] = L._::_ [] L.[]
+cp (xs :: xss) = 
+  L.concat (L.map (λ x -> L.map (λ ys -> x :: ys) 
+                  (cp xss)) xs)
+\end{lstlisting}
 
+It is easy to see why performing inductive proofs involving this function is not a promising strategy, since it has to evaluate its argument completely before calculating even parts of the return value. The properties mentioned above are therefore left unproved.
 
-Intuitively the involution property holds, but formally proving it in Coq turned out to be not feasible which is why this part has been implemented in Agda. However, the general case for \(N^2 \times N^2\) puzzles could not be considered either, instead specific proofs for \(N = 3\) have been formulated. The complexity of proving properties of these core functions of the solver gives an indication about how complex reasoning about properties of the overall solver will be.
+The only way to prove the involution property, even with vectors, was to simply decompose the input entirely. This enables Agda to execute the function entirely, so that the proof itself could simply use reflexivity. This is not elegant, and the proof needs to be adapted whenever the board size is changed (though the structure remains the same, of course), but more sophisticated approaches simply did not work out.
 
-MARCO
+\subsubsection{Proving equivalence}
+We first set out to prove that 
+\begin{align*}
+  filter~(allVec~nodups \cdot f) \cdot mcp \\= filter (allVec~nodups\cdot f) (mcp \cdot pruneBy~f)
+\end{align*} 
+for $f \in \{rows,~cols,~boxs\}$, following Bird's proof (p. 675 in the paper) quite closely. Using the lemmas mentioned above, we were able to prove this without any gaps. The proofs are named \texttt{step1} to \texttt{step9} and can also be found in \texttt{Sudoku.agda}. A remarkable feature of most of these proofs is that they look quite complicated and often require at least one additional lemma, although single steps often consist mostly of simple rewrites. This is due to Agda's rather complicated way of constructing proofs and would probably have looked a lot nicer when done in Coq.
 
+Using those steps, we could construct proofs showing the abovementioned lemma for \texttt{rows}, \texttt{cols} and \texttt{boxs} (see for example \texttt{pruneCorrectRows}). We then used these to show that 
+\begin{align*}
+  filter~correct \cdot mcp = filter~correct \cdot mcp \cdot prune,
+\end{align*}
+mostly by rearranging proof terms and rewriting with theorems we proved before; again following Bird's proof (p. 676 in the paper). This, too, was successful and could be done without any gaps. 
+
+We did, however, have problems proving some properties of \texttt{filter} in Agda, namely the lemmas \texttt{filterConjunction} and \texttt{filterSwap}. We proved these lemmas in Coq; the proofs can be found in the file \texttt{SudokuAgdaHelp.v}. They are left without proof in the Agda file. 
+
+This and the relative ugliness of almost all out proofs in Agda raises the question if it would have been a better idea to prove at least some properties in Coq. Its support for performing varying degrees of simplification at will as well as much simpler rewrite mechanisms suggest that we could have saved a lot of time this way, and would have ended up with much more readable proofs.
 
 
 % most basic functions are already ridiculously complex: cols, boxes
@@ -181,7 +210,7 @@ MARCO
 \section{Conclusions and Further Work}
 \label{sec:conc}
 % a conclusion, reflecting on your work. What would be needed to finish this project? What would you do differently next time?
-There are multiple reasons to why implementing and verifying the Sudoku solver in Coq is hard:
+There are multiple reasons to why implementing and verifying the Sudoku solver with either Coq or Agda is hard:
 \begin{itemize}
   \item Properties and specifications of the overall solver are hard to break down for individual component functions.
   \item Advanced general recursion is not easily implemented and it is not even sure if there exists a better implementation approach to \texttt{search}. Introducing dependent types (e.g. \texttt{Vector}s instead of \texttt{List}s) complicates this matter even further.
@@ -190,17 +219,17 @@ There are multiple reasons to why implementing and verifying the Sudoku solver i
 
 The problem of solving Sudoku puzzles automatically seems to be a nice functional pearl and the Haskell implementations are elegant and short. Given the nature of the Coq framework it turns out that Coq is not ideal for general functional programming (e.g. requirements of functions to be total and quite restricted recursion). It is because of this that the Coq implementation sometimes lacks functional elegance: general recursion had to be defined introducing an artificial parameter on which structural recursion is performed (which in turn made reasoning about the recursion not logical but purely structural); impossible branches could not be eliminated by constraining input arguments; additional arguments (although not sensible) had to be provided for successful type checking (e.g. \texttt{hd Blank} in the non-trivial \texttt{sudoku} function). On the other hand, reasoning and proving properties of basic functions is easy and well supported.
 
-Since functional programming in Agda is easier because of the better support of dependent types, implementing the naive solvers using constrained data types has been less of an effort. Also, while proving properties in Agda is not as intuitive as in Coq, it turned out that the step-by-step proofs that are given for important laws in the paper could be translated to Agda more or less straightforwardly. \todo{Oder nicht?}
+Since functional programming in Agda is easier because of the better support of dependent types, implementing the naive solvers using constrained data types has been less of an effort. Unfortunately Agda's theorem proving abilities are less well developed, which is why proofs often have to be broken up into several pieces and are generally very verbose, sometimes to the point of being barely readable. 
 
-As a result of the complexity of the problem, the strictness of the Coq framework and involved proving techniques in Agda the solution presented resembles a mixed approach cherry-picking from the advantages of theoretical reasoning in the paper, Coq's interactive and straightforward proving mechanisms and Agda's support of dependent types and functional programming. While some Lemmas were straightforward to prove in Coq, it was not easily done in Agda and vice versa. That is why multi-step and bigger proofs consist of statements proven in Coq and Agda and sometimes claims from the paper to form a reasoning about the solver that is as complete as possible. Because of the functional programming restrictions in Coq and involved proving in Agda it was not feasible to construct an isolated complete proof of advanced properties in either Coq or Agda.
+As a result of the complexity of the problem, the strictness of the Coq framework and involved proving techniques in Agda, the solution presented resembles a mixed approach cherry-picking from the advantages of theoretical reasoning in the paper, Coq's interactive and straightforward proving mechanisms and Agda's support of dependent types and functional programming. While some Lemmas were straightforward to prove in Coq, it was not easily (or not at all) possible in Agda and vice versa. That is why our main equivalence proof contains both statements proven in Coq and Agda, and sometimes has to incorporate unproved claims from the paper in order to form a reasoning about the solver that is as complete as possible. Because of the functional programming restrictions in Coq and involved proving in Agda it was not feasible to construct an isolated complete proof of advanced properties in either Coq or Agda.
 
 What has been discussed rather informally so far can be stated as clear facts of what needs to be done to finish the project and alternative solution approaches if the project was to be repeated:
 \begin{itemize}
-  \item Use Coq more often to prove properties. Even if implementation of functions in Coq is harder at times than in Agda, it pays off when it comes to proving specifications as using Agda's proof system is complicated. Effort could have been reduced here.
+  \item Use Coq more often to prove properties. Even if implementation of functions in Coq is harder at times than in Agda, it pays off when it comes to proving specifications as using Agda's proof system is complicated. Effort could have been reduced here. 
   \item Discover and think about effects of implicit assumptions on the overall system early: require Sudoku puzzles as \(9 \times 9\) matrices from the start rather than trying to be as generic as possible to simplify proofs. The authors of the functional pearl were not concerned with computer assisted proofs of their solution which is why they support general \(N^2 \times N^2\) Sudoku puzzles. Restricting the scope of the Coq implementation to fixed size Sudoku puzzles with as clear a specification as possible is a better way to approach the verification problem.
   \item Do not underestimate how difficult it is to reason about 2 or sometimes 3 levels of nested lists or vectors. The more general the underlying data structure is, the more general the functions applied to them have to be which in turn introduces many unnecessary and complicated cases when reasoning about the properties of these functions.
 \end{itemize}
 
-To summarize, in most cases it was not hard to transfer the Haskell definitions of the functions presented into Coq. However, general and advanced proofs are difficult to handle in one system only which is why there is usually a claim from the original paper involved as well as partial proofs in Coq and Agda. Defining properties of the problem early in the process and rigorous adherence to them is a promising way of verifying the solver solely and extensively in Coq.
+To summarize, in most cases it was not hard to transfer the Haskell definitions of the functions presented into Coq. However, general and advanced proofs are difficult to handle in one system only, which is why there is usually a claim from the original paper involved as well as partial proofs in Coq and Agda. Defining properties of the problem early in the process and rigorous adherence to them is a promising way of verifying the solver solely and extensively in Coq.
 
 \end{document}
