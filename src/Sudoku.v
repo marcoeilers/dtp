@@ -303,6 +303,8 @@ Eval compute in sudoku' solvable_board.
  * Reasoning about sudoku
  *)
 
+(* Involution property of the operations on boards *)
+
 Lemma rows_id : forall (b:board),
   rows (rows b) = b.
 Proof. reflexivity. Qed.
@@ -310,14 +312,16 @@ Proof. reflexivity. Qed.
 Lemma cols_id : forall (b:board),
   cols (cols b) = b.
 Proof.
-  (* TODO *)
+  (* in Sudoku.agda for N = 3 *)
 Admitted.
 
 Lemma boxes_id : forall (b:board),
   boxes (boxes b) = b.
 Proof.
-  (* TODO *)
+  (* in Sudoku.agda for N = 3 *)
 Admitted.
+
+(* Trivial correctness properties of the naive approaches *)
 
 Theorem naive_all_correct : forall (b:board),
   all correct (sudoku_naive b) = true.
