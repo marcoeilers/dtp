@@ -24,7 +24,6 @@ eq_nat zero (suc n) = false
 eq_nat (suc n) zero = false
 eq_nat (suc n) (suc n') = eq_nat n n'
 
-
 pure : {n : Nat} {a : Set} -> a -> Vec a n
 pure {zero} = λ x → []
 pure {suc y} = λ x →  x ∷ (pure {y} x)
@@ -64,17 +63,14 @@ rows b = b
 
 cols : {a : Set} {n m : Nat} -> Vec (Vec a n) m -> Vec (Vec a m) n
 cols [] = pure []
---cols (xs ∷ []) = vmap (λ x -> x ∷ []) xs
 cols (xs ∷ xss) = vmap _∷_ xs  <*> (cols xss)
 
 
-mygroup : {a : Set} -> Vec a boardsize -> Vec (Vec a boxsize) boxsize
-mygroup l = P.Σ.proj₁ (group boxsize boxsize l)
-
-
+groupBox : {a : Set} -> Vec a boardsize -> Vec (Vec a boxsize) boxsize
+groupBox l = P.Σ.proj₁ (group boxsize boxsize l)
 
 boxs : {a : Set} -> Vec (Vec a boardsize) boardsize -> Vec (Vec a boardsize) boardsize
-boxs b = Data.Vec.map Data.Vec.concat (Data.Vec.concat (Data.Vec.map cols (mygroup (Data.Vec.map mygroup b))))
+boxs b = Data.Vec.map Data.Vec.concat (Data.Vec.concat (Data.Vec.map cols (groupBox (Data.Vec.map groupBox b))))
 
 testboard =
   (1 ∷ 2 ∷ 3 ∷ 4 ∷ 5 ∷ 6 ∷ 7 ∷ 8 ∷ 9 ∷ [] ) ∷
@@ -111,16 +107,12 @@ allVec f (x ∷ xs) = if f x then allVec f xs else false
 correct : Board -> Bool
 correct b = allVec nodups (rows b)  ∧ allVec nodups (cols b)  ∧ allVec nodups (boxs b)
 
-cp : {a : Set} {n m : Nat} -> Vec (Vec a n) m -> Vec (Vec a m) (pow n m)
-cp [] = pure []
-cp (xs ∷ xss) = concat (map (λ x -> map (λ ys -> x ∷ ys) (cp xss)) xs)
-
-cp' : {a : Set} {n : Nat} -> Vec (L.List a) n -> L.List (Vec a n)
-cp' [] = L._∷_ [] L.[]
-cp' (xs ∷ xss) = L.concat (L.map (λ x -> L.map (λ ys -> x ∷ ys) (cp' xss)) xs)
+cp : {a : Set} {n : Nat} -> Vec (L.List a) n -> L.List (Vec a n)
+cp [] = L._∷_ [] L.[]
+cp (xs ∷ xss) = L.concat (L.map (λ x -> L.map (λ ys -> x ∷ ys) (cp xss)) xs)
 
 mcp : {a : Set} {n m : Nat} -> Vec (Vec (L.List a) m) n -> L.List (Vec (Vec a m) n)
-mcp cs = cp' (map cp' cs)
+mcp cs = cp (map cp cs)
 
 sudokuNaive : Board -> L.List Board
 sudokuNaive b = L.filter correct (mcp (choices b))
@@ -157,17 +149,16 @@ sudokuNaive2 b = L.filter correct (mcp (prune (choices b)))
 fType : {a : Set} -> Set
 fType {a} = (Vec (Vec a boardsize) boardsize -> Vec (Vec a boardsize) boardsize)
 bType = Vec (Vec (L.List CellVal) boardsize) boardsize
-b'Type = L.List Board
-b''Type : {a : Set} -> Set
-b''Type {a} = Vec (Vec a boardsize) boardsize
-b'''Type : {a : Set} -> Set
-b'''Type {a} = Vec (Vec (L.List a) boardsize) boardsize
-b''''Type = MatrixChoices
+ListBoard = L.List Board
+VecVecABsBs : {a : Set} -> Set
+VecVecABsBs {a} = Vec (Vec a boardsize) boardsize
+VecVecListABsBs : {a : Set} -> Set
+VecVecListABsBs {a} = Vec (Vec (L.List a) boardsize) boardsize
 idType : {a : Set} -> (fType {a}) -> Set
-idType {a} f = ((b'' : b''Type) -> f (f b'') == b'')
+idType {a} f = ((b'' : VecVecABsBs) -> f (f b'') == b'')
 polyFType = (a : Set) -> fType {a}
 mapMcpType : polyFType -> Set
-mapMcpType f = ({b'' : b''Type} -> L.map (f CellVal) (mcp b'') == mcp ((f (L.List CellVal)) b''))
+mapMcpType f = ((b'' : VecVecABsBs) -> L.map (f CellVal) (mcp b'') == mcp ((f (L.List CellVal)) b''))
 
 rowsId : {a : Set} -> (b : Vec (Vec a boardsize) boardsize) -> rows (rows b) == b
 rowsId b = Refl
@@ -197,148 +188,153 @@ boxsId ((xr1c1 ∷ xr1c2 ∷ xr1c3 ∷ xr1c4 ∷ xr1c5 ∷ xr1c6 ∷ xr1c7 ∷ x
  (xr9c1 ∷ xr9c2 ∷ xr9c3 ∷ xr9c4 ∷ xr9c5 ∷ xr9c6 ∷ xr9c7 ∷ xr9c8 ∷ xr9c9 ∷ []) ∷ []) = Refl
 
 
-rowsMapHelp : (b' : b'Type) -> L.map rows b' == b'
-rowsMapHelp L.[] = Refl
-rowsMapHelp (L._∷_ x xs) = cong (L._∷_ x) (rowsMapHelp xs)
+rowsMapfilterAllCp : (b' : ListBoard) -> L.map rows b' == b'
+rowsMapfilterAllCp L.[] = Refl
+rowsMapfilterAllCp (L._∷_ x xs) = cong (L._∷_ x) (rowsMapfilterAllCp xs)
 
-rowsMapMcp : {b : b''Type} -> L.map rows (mcp b) == mcp (rows b)
-rowsMapMcp {b} with  L.map rows (mcp b) | rowsMapHelp (mcp b) 
-rowsMapMcp {b} | .(mcp b) | Refl = Refl
+rowsMapMcp : (b : VecVecABsBs) -> L.map rows (mcp b) == mcp (rows b)
+rowsMapMcp b with  L.map rows (mcp b) | rowsMapfilterAllCp (mcp b) 
+rowsMapMcp b | .(mcp b) | Refl = Refl
 
-colsMapMcp : {b : b''Type} -> L.map cols (mcp b) == mcp (cols b)
-colsMapMcp {b} = {!!}
+colsMapMcp : {a : Set} -> (b : VecVecABsBs) -> L.map (cols {a}) (mcp b) == mcp (cols b)
+colsMapMcp b = {!!}
 
-boxsMapMcp : {b : b''Type} -> L.map boxs (mcp b) == mcp (boxs b)
-boxsMapMcp {b} = {!!}
+boxsMapMcp : {a : Set} -> (b : VecVecABsBs) -> L.map (boxs {a}) (mcp b) == mcp (boxs b)
+boxsMapMcp b = {!!}
 
-fId' : (x : Board) -> (f : fType) -> (b' : b'Type) -> (p : Board -> Bool) -> idType f -> 
+filterMapFilterMap' : (x : Board) -> (f : fType) -> (b' : ListBoard) -> (p : Board -> Bool) -> idType f -> 
        L._∷_ x (L.map f (L.filter p (L.map f b'))) == L._∷_ (f (f x)) (L.map f (L.filter p (L.map f b'))) 
-fId' x f b' p id with (f (f x)) | id x
-fId' x f b' p id | .x | Refl = Refl
+filterMapFilterMap' x f b' p id with (f (f x)) | id x
+filterMapFilterMap' x f b' p id | .x | Refl = Refl
 
-fId : (f : fType) -> (b' : b'Type) -> (p : Board -> Bool) -> idType f -> 
+filterMapFilterMap : (f : fType) -> (b' : ListBoard) -> (p : Board -> Bool) -> idType f -> 
       L.filter (λ x -> p (f x)) b' == L.map f (L.filter p (L.map f b'))
-fId f L.[] p id = Refl
-fId f (L._∷_ x xs) p id with p (f x)
-fId f (L._∷_ x xs) p id | bool with (f (f x)) | id x 
-fId f (L._∷_ x xs) p id | true | .x | Refl  = trans (cong (L._∷_ x) (fId f xs p id)) (fId' x f xs p id)
-fId f (L._∷_ x xs) p id | false | .x | Refl = fId f xs p id
+filterMapFilterMap f L.[] p id = Refl
+filterMapFilterMap f (L._∷_ x xs) p id with p (f x)
+filterMapFilterMap f (L._∷_ x xs) p id | bool with (f (f x)) | id x 
+filterMapFilterMap f (L._∷_ x xs) p id | true | .x | Refl  = trans (cong (L._∷_ x) (filterMapFilterMap f xs p id)) (filterMapFilterMap' x f xs p id)
+filterMapFilterMap f (L._∷_ x xs) p id | false | .x | Refl = filterMapFilterMap f xs p id
 
-fId2' : (f : fType) -> (b' : b'Type) -> idType f ->
+mapFilterFilterMap' : (f : fType) -> (b' : ListBoard) -> idType f ->
         L.map f (L.map f b') == b'
-fId2' f L.[] id = Refl
-fId2' f (L._∷_ x xs) id with (f (f x)) | id x 
-fId2' f (L._∷_ x xs) id | .x | Refl = cong (L._∷_ x) (fId2' f xs id)
+mapFilterFilterMap' f L.[] id = Refl
+mapFilterFilterMap' f (L._∷_ x xs) id with (f (f x)) | id x 
+mapFilterFilterMap' f (L._∷_ x xs) id | .x | Refl = cong (L._∷_ x) (mapFilterFilterMap' f xs id)
 
-fId2 : (f : fType) -> (b' : b'Type) -> (p : Board -> Bool) -> idType f ->
+mapFilterFilterMap : (f : fType) -> (b' : ListBoard) -> (p : Board -> Bool) -> idType f ->
        L.map f (L.filter p b') == L.filter (λ x -> p (f x)) (L.map f b')
-fId2 f b' p id with (L.filter (λ x -> p (f x)) (L.map f b')) | fId f (L.map f b') p id 
-fId2 f b' p id | ._ | Refl with (L.map f (L.map f b')) | fId2' f b' id 
-fId2 f b' p id | ._ | Refl | .b' | Refl = Refl
+mapFilterFilterMap f b' p id with (L.filter (λ x -> p (f x)) (L.map f b')) | filterMapFilterMap f (L.map f b') p id 
+mapFilterFilterMap f b' p id | ._ | Refl with (L.map f (L.map f b')) | mapFilterFilterMap' f b' id 
+mapFilterFilterMap f b' p id | ._ | Refl | .b' | Refl = Refl
 
 
 step1 : (f : fType) -> idType f -> (b : bType) -> 
         L.filter (λ x -> allVec nodups (f x)) (mcp b) == L.map f (L.filter (allVec nodups) (L.map f (mcp b)))
-step1 f id b = fId f (mcp b) (allVec nodups) id
+step1 f id b = filterMapFilterMap f (mcp b) (allVec nodups) id
 
 step2' : (f : polyFType) -> mapMcpType f -> (b : bType) ->
-         L.map (f CellVal) (L.filter (allVec nodups) (L.map (f CellVal) (mcp b))) == L.map (f CellVal) (L.filter (allVec nodups) (mcp ((f (L.List CellVal)) b)))
-step2' f id b with (L.map (f CellVal) (mcp b)) | (id {b}) 
+         L.map (f CellVal) (L.filter (allVec nodups) (L.map (f CellVal) (mcp b))) == 
+         L.map (f CellVal) (L.filter (allVec nodups) (mcp ((f (L.List CellVal)) b)))
+step2' f id b with (L.map (f CellVal) (mcp b)) | (id b) 
 step2' f id b | ._ | Refl = Refl
 
 step2 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
-        L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == L.map (f _) (L.filter (allVec nodups) (mcp ((f _) b)))
+        L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == 
+        L.map (f _) (L.filter (allVec nodups) (mcp ((f _) b)))
 step2 f b id id' = trans (step1 (f _) id b) (step2' f id' b)
 
 step3' : (f : polyFType) -> (b : bType) -> 
-         L.map (f _) (L.filter (allVec nodups) (mcp ((f _) b))) == L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b))))
+         L.map (f _) (L.filter (allVec nodups) (mcp ((f _) b))) == 
+         L.map (f _) (L.filter (allVec nodups) (cp (map cp ((f _) b))))
 step3' f b = Refl
 
 step3 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
-        L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b))))
+        L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == 
+        L.map (f _) (L.filter (allVec nodups) (cp (map cp ((f _) b))))
 step3 f b id mapMcp = trans (step2 f b id mapMcp) (step3' f b)
 
 -- cannot prove this. any implicit assumptions?
-help : {a : Set} {n : Nat} -> (p : a -> Bool) -> (b : Vec (L.List a) n) -> 
-       L.filter (allVec p) (cp' b) == cp' (map (L.filter p) b)
-help p [] = Refl
-help p (x ∷ xs) = {!!}
+filterAllCp : {a : Set} {n : Nat} -> (p : a -> Bool) -> (b : Vec (L.List a) n) -> 
+       L.filter (allVec p) (cp b) == cp (map (L.filter p) b)
+filterAllCp p [] = Refl
+filterAllCp p (x ∷ xs) = {!!}
 
-help2 : {n m : Nat} -> (b : Vec (Vec (L.List CellVal) n) m) -> 
-      map (L.filter nodups) (map cp' b) == map (λ x -> L.filter nodups (cp' x)) b
-help2 [] = Refl
-help2 (x ∷ xs) with L.filter nodups (cp' x)
-help2 (x ∷ xs) | fcpx = cong (_∷_ fcpx) (help2 xs)
+step4'' : {n m : Nat} -> (b : Vec (Vec (L.List CellVal) n) m) -> 
+      map (L.filter nodups) (map cp b) == map (λ x -> L.filter nodups (cp x)) b
+step4'' [] = Refl
+step4'' (x ∷ xs) with L.filter nodups (cp x)
+step4'' (x ∷ xs) | fcpx = cong (_∷_ fcpx) (step4'' xs)
 
 
 step4' : (f : polyFType) -> (b : bType) -> 
-         L.map (f _) (L.filter (allVec nodups) (cp' (map cp' ((f _) b)))) ==         
-         L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b)))
-step4' f b with (L.filter (allVec nodups) (cp' (map cp' ((f _) b)))) | (help nodups (map cp' ((f _) b)))
-step4' f b | .(cp' (map (L.filter nodups) (map cp' ((f _) b)))) | Refl with (map (L.filter nodups) (map cp' ((f _) b))) | help2 (f _ b)
-step4' f b | .(cp' (map (L.filter nodups) (map cp' ((f _) b)))) | Refl | .(map (λ x -> L.filter nodups (cp' x)) (f _ b)) | Refl  = Refl
+         L.map (f _) (L.filter (allVec nodups) (cp (map cp ((f _) b)))) ==         
+         L.map (f _) (cp (map (λ x -> L.filter nodups (cp x)) ((f _) b)))
+step4' f b with (L.filter (allVec nodups) (cp (map cp ((f _) b)))) | (filterAllCp nodups (map cp ((f _) b)))
+step4' f b | .(cp (map (L.filter nodups) (map cp ((f _) b)))) | Refl with (map (L.filter nodups) (map cp ((f _) b))) | step4'' (f _ b)
+step4' f b | .(cp (map (L.filter nodups) (map cp ((f _) b)))) | Refl | .(map (λ x -> L.filter nodups (cp x)) (f _ b)) | Refl  = Refl
 
 step4 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
         L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == 
-        L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b)))
+        L.map (f _) (cp (map (λ x -> L.filter nodups (cp x)) ((f _) b)))
 step4 f b id mapMcp = trans (step3 f b id mapMcp) (step4' f b)
 
 -- If we manage to prove this, we're awesome. Otherwise I think it would be okay to just assume this.
 reduceProp : {n : Nat} -> (v : Vec (L.List CellVal) n) -> 
-             L.filter nodups (cp' v) == L.filter nodups (cp' (reduce v))
-reduceProp v = {!!}
+             L.filter nodups (cp v) == L.filter nodups (cp (reduce v))
+reduceProp [] = Refl
+reduceProp (x ∷ xs) = {!!}
 
 reduceProp' : {n m : Nat} -> (b : Vec (Vec (L.List CellVal) m) n) ->
-              map (λ x -> L.filter nodups (cp' x)) b ==
-              map (λ x -> L.filter nodups (cp' (reduce x))) b
+              map (λ x -> L.filter nodups (cp x)) b ==
+              map (λ x -> L.filter nodups (cp (reduce x))) b
 reduceProp' [] = Refl
-reduceProp' (x ∷ xs) with (L.filter nodups (cp' x)) | (reduceProp x)
-reduceProp' (x ∷ xs) | ._ | Refl = cong (_∷_ (L.filter nodups (cp' (reduce x)))) (reduceProp' xs)
+reduceProp' (x ∷ xs) with (L.filter nodups (cp x)) | (reduceProp x)
+reduceProp' (x ∷ xs) | ._ | Refl = cong (_∷_ (L.filter nodups (cp (reduce x)))) (reduceProp' xs)
 
 -- How to prove this? Kind of weird because we have to replace within a lambda expression
 step5' : (f : polyFType) -> (b : bType) -> 
-         L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' x)) ((f _) b))) ==
-         L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' (reduce x))) ((f _) b)))
-step5' f b with (map (λ x -> L.filter nodups (cp' x)) ((f _) b)) | reduceProp' ((f _) b) 
+         L.map (f _) (cp (map (λ x -> L.filter nodups (cp x)) ((f _) b))) ==
+         L.map (f _) (cp (map (λ x -> L.filter nodups (cp (reduce x))) ((f _) b)))
+step5' f b with (map (λ x -> L.filter nodups (cp x)) ((f _) b)) | reduceProp' ((f _) b) 
 step5' f b | ._ | Refl = Refl
 
 step5 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
         L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == 
-        L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' (reduce x))) ((f _) b)))
+        L.map (f _) (cp (map (λ x -> L.filter nodups (cp (reduce x))) ((f _) b)))
 step5 f b id mapMcp = trans (step4 f b id mapMcp) (step5' f b)
 
-help3 : {n m : Nat} -> (b : Vec (Vec (L.List CellVal) n) m) -> 
-      map (L.filter nodups) (map (λ x -> cp' (reduce x)) b) == map (λ x -> L.filter nodups (cp' (reduce x))) b
-help3 [] = Refl
-help3 (x ∷ xs) with L.filter nodups (cp' (reduce x)) 
-help3 (x ∷ xs) | fcprx = cong (_∷_ fcprx) (help3 xs) 
+step6'' : {n m : Nat} -> (b : Vec (Vec (L.List CellVal) n) m) -> 
+      map (L.filter nodups) (map (λ x -> cp (reduce x)) b) == map (λ x -> L.filter nodups (cp (reduce x))) b
+step6'' [] = Refl
+step6'' (x ∷ xs) with L.filter nodups (cp (reduce x)) 
+step6'' (x ∷ xs) | fcprx = cong (_∷_ fcprx) (step6'' xs) 
 
 step6' : (f : polyFType) -> (b : bType) -> 
-         L.map (f _) (cp' (map (λ x -> L.filter nodups (cp' (reduce x))) ((f _) b))) ==
-         L.map (f _) (L.filter (allVec nodups) (cp' (map (λ x -> cp' (reduce x)) ((f _) b))))
-step6' f b with (L.filter (allVec nodups) (cp' (map (λ x -> cp' (reduce x)) ((f _) b)))) | help nodups (map (λ x -> cp' (reduce x)) ((f _) b)) 
-step6' f b | ._ | Refl with (map (λ x -> L.filter nodups (cp' (reduce x))) ((f _) b)) | help3 (f _ b) 
+         L.map (f _) (cp (map (λ x -> L.filter nodups (cp (reduce x))) ((f _) b))) ==
+         L.map (f _) (L.filter (allVec nodups) (cp (map (λ x -> cp (reduce x)) ((f _) b))))
+step6' f b with (L.filter (allVec nodups) (cp (map (λ x -> cp (reduce x)) ((f _) b)))) | filterAllCp nodups (map (λ x -> cp (reduce x)) ((f _) b)) 
+step6' f b | ._ | Refl with (map (λ x -> L.filter nodups (cp (reduce x))) ((f _) b)) | step6'' (f _ b) 
 step6' f b | ._ | Refl | ._ | Refl = Refl
 
 step6 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
         L.filter (λ x -> allVec nodups ((f _) x)) (mcp b) == 
-        L.map (f _) (L.filter (allVec nodups) (cp' (map (λ x -> cp' (reduce x)) ((f _) b))))
+        L.map (f _) (L.filter (allVec nodups) (cp (map (λ x -> cp (reduce x)) ((f _) b))))
 step6 f b id mapMcp = trans (step5 f b id mapMcp) (step6' f b)
 
-help7' : {m n : Nat} -> (f : polyFType) -> (b : Vec (Vec (L.List CellVal) m) n) -> 
-         (map cp' (map reduce b)) == map (λ x -> cp' (reduce x)) b
-help7' f [] = Refl
-help7' f (x ∷ xs) = cong (_∷_ (cp' (reduce x))) (help7' f xs)
+step7''' : {m n : Nat} -> (f : polyFType) -> (b : Vec (Vec (L.List CellVal) m) n) -> 
+         (map cp (map reduce b)) == map (λ x -> cp (reduce x)) b
+step7''' f [] = Refl
+step7''' f (x ∷ xs) = cong (_∷_ (cp (reduce x))) (step7''' f xs)
 
-help7 : (f : polyFType) -> (b : bType) -> 
-        mcp (map reduce ((f _) b)) == cp' (map (λ x -> cp' (reduce x)) (f _ b))
-help7 f b = cong (cp') (help7' f (f _ b))
+step7'' : (f : polyFType) -> (b : bType) -> 
+        mcp (map reduce ((f _) b)) == cp (map (λ x -> cp (reduce x)) (f _ b))
+step7'' f b = cong (cp) (step7''' f (f _ b))
 
 step7' : (f : polyFType) -> (b : bType) -> idType (f _) -> 
-         L.map (f _) (L.filter (allVec nodups) (cp' (map (λ x -> cp' (reduce x)) ((f _) b)))) ==
+         L.map (f _) (L.filter (allVec nodups) (cp (map (λ x -> cp (reduce x)) ((f _) b)))) ==
          L.filter (λ x -> allVec nodups ((f _) x)) (L.map (f _) (mcp (map reduce ((f _) b))))
-step7' f b id with (L.map (f _) (L.filter (allVec nodups) (cp' (map (λ x -> cp' (reduce x)) ((f _) b)))))  | fId2 (f _) (cp' (map (λ x -> cp' (reduce x)) ((f _) b))) (allVec nodups) id 
-step7' f b id | ._ | Refl with (mcp (map reduce ((f _) b))) | help7 f b 
+step7' f b id with (L.map (f _) (L.filter (allVec nodups) (cp (map (λ x -> cp (reduce x)) ((f _) b)))))  | mapFilterFilterMap (f _) (cp (map (λ x -> cp (reduce x)) ((f _) b))) (allVec nodups) id 
+step7' f b id | ._ | Refl with (mcp (map reduce ((f _) b))) | step7'' f b 
 step7' f b id | ._ | Refl | ._ | Refl = Refl
 
 step7 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
@@ -349,7 +345,7 @@ step7 f b id mapMcp = trans (step6 f b id mapMcp) (step7' f b id)
 step8' : (f : polyFType) -> (b : bType) -> mapMcpType f ->
          L.filter (λ x -> allVec nodups ((f _) x)) (L.map (f _) (mcp (map reduce ((f _) b)))) ==
          L.filter (λ x -> allVec nodups ((f _) x)) (mcp ((f _) (map reduce ((f _) b))))
-step8' f b mapMcp with (L.map (f _) (mcp (map reduce ((f _) b)))) | (mapMcp {map reduce ((f _) b)}) 
+step8' f b mapMcp with (L.map (f _) (mcp (map reduce ((f _) b)))) | (mapMcp (map reduce ((f _) b))) 
 step8' f b mapMcp | ._ | Refl = Refl
 
 step8 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
@@ -367,17 +363,17 @@ step9 : (f : polyFType) -> (b : bType) -> idType (f _) -> mapMcpType f ->
         L.filter (λ x -> allVec nodups ((f _) x)) (mcp (pruneBy (f _) b))
 step9 f b id mapMcp = trans (step8 f b id mapMcp) (step9' f b)
 
-pruneCorrectRows : (b : b''Type) ->
+pruneCorrectRows : (b : VecVecABsBs) ->
             L.filter (λ x -> allVec nodups (rows x)) (mcp b) == 
             L.filter (λ x -> allVec nodups (rows x)) (mcp (pruneBy rows b))
 pruneCorrectRows b = step9 (λ x -> rows {x}) b rowsId rowsMapMcp
 
-pruneCorrectCols : (b : b''Type) ->
+pruneCorrectCols : (b : VecVecABsBs) ->
             L.filter (λ x -> allVec nodups (cols x)) (mcp b) == 
             L.filter (λ x -> allVec nodups (cols x)) (mcp (pruneBy cols b))
 pruneCorrectCols b = step9 (λ x -> cols {x}) b colsId colsMapMcp
 
-pruneCorrectBoxs : (b : b''Type) ->
+pruneCorrectBoxs : (b : VecVecABsBs) ->
             L.filter (λ x -> allVec nodups (boxs x)) (mcp b) == 
             L.filter (λ x -> allVec nodups (boxs x)) (mcp (pruneBy boxs b))
 pruneCorrectBoxs b = step9 (λ x -> boxs {x}) b boxsId boxsMapMcp
@@ -389,4 +385,15 @@ pruneCorrectBoxs b = step9 (λ x -> boxs {x}) b boxsId boxsMapMcp
 -- proved in Coq, so we can just admit this here
 filterConjunction : (b : L.List Board) -> 
                     L.filter correct b == L.filter (λ x -> allVec nodups (rows x)) (L.filter (λ x -> allVec nodups (cols x)) (L.filter (λ x -> allVec nodups (boxs x)) b))
-filterConjunction b = {!!}                    
+filterConjunction b = {!!}      
+
+filterSwap' : (x : Board) -> (xs : L.List Board) -> (p : Board -> Bool) ->
+              (p x == true) -> L.filter p (L._∷_ x xs) == L._∷_ x (L.filter p xs)
+filterSwap' x xs p id with p x
+filterSwap' x xs p Refl | true = Refl
+filterSwap' x xs p () | false 
+
+filterSwap : (b : L.List Board) -> (p1 p2 : Board -> Bool) ->
+             L.filter p1 (L.filter p2 b) == L.filter p2 (L.filter p1 b)
+filterSwap L.[] p1 p2 = Refl
+filterSwap (L._∷_ x xs) p1 p2  = {!!}
