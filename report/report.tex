@@ -91,36 +91,47 @@ The second major ingredient is \texttt{expand}. First the number of fewest choic
 
 Despite being very complex, \texttt{sudoku} is able to solve a regular board in a matter of seconds by not exploring invalid solutions too much.
 
+\subsection{SudokuVector.v}
+MARCO
+
+\subsection{Implementation in Agda}
+MARCO
+
 \section{Reasoning about the Solver}
 \label{sec:reas}
 % a description of the specification or properties that these functions satisfy. How far did you get with all the proofs? Were there any properties that were especially hard/easy to prove? Did you require any auxiliary lemmas?
-Both naive approaches have been implemented in Agda as well since reasoning about some properties is easier to do than in Coq. Besides the difference in implementation languages the Coq and Agda versions are identical which is why some properties are proven in either Coq or Agda and then assumed to hold in the other version as well.
+
 
 \subsection{Specifications and Properties}
-The extraction operations on boards \texttt{rows}, \texttt{cols} and \texttt{boxes} are involutive. For \texttt{rows} this holds trivially since the board is defined as a list of rows and thus can be returned as-is. For \texttt{cols} and \texttt{boxes} (which uses \texttt{cols}) this is more involved. Intuitively the involution property holds, but formally proving it in Coq turned out to be not feasible which is why this part has been implemented in Agda. However, the general case for \(N^2 \times N^2\) puzzles could not be considered either, instead specific proofs for \(N = 3\) have been formulated. The complexity of proving properties of these core functions of the solver gives an indication about how complex reasoning about properties of the overall solver will be.
+In his paper, Bird proves the equivalence of the first and second versions, and gives a very brief sketch for a proof of the equivalence of the first and third version. In these proofs, he uses several other facts about the functions he uses, which we will discuss now.
+ 
+The extraction operations on boards \texttt{rows}, \texttt{cols} and \texttt{boxes} are involutive, meaning that \(f \cdot f = id\) for \(f \in \{rows,cols,boxes\}\). For \texttt{rows} this holds trivially since the board is defined as a list of rows and thus can be returned as-is. For \texttt{cols} and \texttt{boxes} (which uses \texttt{cols}) this is more involved. 
 
-No further specifications for the functions used in the first naive implementation are given. Since all possible configurations are generated and only the correct ones are filtered, it is guaranteed that the naive approach finds all possible solutions and does not discard valid solutions. The second approach is very similar but has one important difference: intermediate solutions are pruned to eliminate invalid configurations before filtering for correct results. So for the second approach to be correct and equivalent to the first one, the following must hold:\todo{Wie weit sind wir hiermit?}
+Bird gives several other properties that must hold for the functions used in the two naive versions:
+\begin{align}
+  &filter~(p \cdot f) = map~f \cdot filter~p \cdot map~f\\
+  &map~f \cdot filter~p = filter (p \cdot f ) \cdot map~f\\
+  &filter~(all~p) \cdot cp = cp \cdot map~(filter~p)\\
+  &map~f \cdot mcp = mcp \cdot f~~\text{for \(f \in \{rows,cols,boxes\}\)}\\
+  &filter~nodups \cdot cp = filter~nodups \cdot cp \cdot reduce
+\end{align}
+
+The first two laws are valid if \(f \cdot f = id\), in particular if \(f\) is either \(rows\), \(cols\) or \(boxes\).
+The third law states that if lists from a Cartesian product are wanted for which all elements satisfy \(p\), they can be obtained by computing the Cartesian product on component lists whose elements satisfy \(p\).
+The fifth law is the crucial property of \(reduce\): filtering lists from the Cartesian product which do not contain duplicates yields the same result as removing already fixed entries in a region from the possible choices for a cell value.
+
+For the last approach no further specifications are given for the functions that are being used. 
+
+Since all possible configurations are generated and only the correct ones are filtered, it is guaranteed that the naive approach finds all possible solutions and does not discard valid solutions. The second approach is very similar but has one important difference: intermediate solutions are pruned to eliminate invalid configurations before filtering for correct results. So for the second approach to be correct and equivalent to the first one, the following must hold:\todo{Wie weit sind wir hiermit?}
 \begin{align*}
   filter~correct \cdot mcp \cdot choices &= filter~correct \cdot mcp \cdot prune \cdot choices\\
   \Rightarrow filter~correct \cdot mcp &= filter~correct \cdot mcp \cdot prune
 \end{align*}
 
 This says that pruning generated choices of the board produces the same overall solutions because only choices are pruned that would be discarded by the correctness filter anyway. In order to prove this, multiple laws that must hold have to be introduced:
-\begin{align}
-  &filter~(p \cdot f) = map~f \cdot filter~p \cdot map~f\\
-  &filter~(all~p) \cdot cp = cp \cdot map~(filter~p)\\
-  &map~f \cdot mcp = mcp \cdot f~~\text{for \(f \in \{rows,cols,boxes\}\)}\\
-  &filter~nodups \cdot cp = filter~nodups \cdot cp \cdot reduce
-\end{align}
 
-\begin{enumerate}
-  \item The first law is valid if \(f \cdot f = id\), in particular if \(f\) is either \(rows\), \(cols\) or \(boxes\). This law has been proven for \(N = 3\) in Agda.
-  \item This law states that if lists from a Cartesian product are wanted for which all elements satisfy \(p\), they can be obtained by computing the Cartesian product on component lists whose elements satisfy \(p\). \todo{unbewiesen}
-  \item These three laws are intuitively clear and are not verified.
-  \item The fourth law is the crucial property of \(reduce\): filtering lists from the Cartesian product which do not contain duplicates yields the same result as removing already fixed entries in a region from the possible choices for a cell value. \todo{unbewiesen}
-\end{enumerate}
 
-For the last approach no further specifications are given for the functions that are being used. As a generalization of the important fact that pruning does not discard valid solutions, soundness and completeness of the implemented solver are properties that would be helpful to be verified. More specifically it is necessary to verify that given a valid Sudoku puzzle (since no validation is performed as it is assumed that only valid Sudoku puzzles are passed in as arguments) the solver finds all (if there exist any) solutions to the puzzle and only those. \todo{Stimmt das überhaupt?}
+As a generalization of the important fact that pruning does not discard valid solutions, soundness and completeness of the implemented solver are properties that would be helpful to be verified. More specifically it is necessary to verify that given a valid Sudoku puzzle (since no validation is performed as it is assumed that only valid Sudoku puzzles are passed in as arguments) the solver finds all (if there exist any) solutions to the puzzle and only those. \todo{Stimmt das überhaupt?}
 
 For the first naive approach this trivially holds since all possible configurations respecting the initial setup of the puzzle are generated and only valid solutions are kept. By the equivalence proof that pruning choices before computing the MCP does not discard valid solutions the property also holds for the second naive approach. Since the third and more sophisticated implementation does not rely on exhaustively generating configurations and filtering correct ones, the equivalence proof cannot be given.
 
@@ -128,13 +139,34 @@ Instead it would be preferable to do quantification of all valid boards and do i
 
 Because of these reasons the focus of proving properties of the implemented approaches has been put on the first two naive implementations. More specifically, the prune-equivalence proof has been attempted by proving the 4 laws needed to show analogousness of the first two approaches. \todo{Etwas ranten wie kompliziert die step-by-step proofs sind wenn cp und mcp vorkommt}
 
-\subsection{Notes}
-Implementing functions that satisfy specifications has been attempted by introducing constraints on the input arguments where possible:
+\subsection{Verification}
+Proving the soundness of the two naive approaches is trivial. Since incorrect solutions are filtered out as the last step in both of them, the resulting list can only contain correct ones. A (very short) formal proof of this in Coq can be found in TODO.
+
+While this was simple, soundness for the efficient implementation, completeness for any implementation but the first, or in fact anything else was almost impossible. In particular, we encountered the following problems:
+\begin{enumerate}
+  \item Representing Sudoku boards as lists of lists of cell values is not specific enough. Many of our functions expect inputs of size \(N^2 \times N^2\). For these functions, the properties we want to prove simply do not hold for lists of lists of any length. Even the most basic functions, like \texttt{rows} and \texttt{cols}, do not behave the way we need them to if list lengths are not restricted.
+  \item There is no meaningful way to perform induction over Sudoku boards. If rows or columns are added or removed arbitrarily, the resulting matrix ceases to be a valid Sudoku board. While it is possible to perform induction over the box size $N$ of Sudoku boards, this does not actually help with proving anything.
+  \item Generally, it can be hard to prove properties of functions dealing with nested lists. This is especially the case if a function's return value depends on values from different levels of the list hierarchy. We will see an example of this later.
+  \item The third implementation is much more complex than the two naive ones, and works quite differently internally. Since Bird does not prove its correctness in any detail in the paper, we also have very few specifications for the functions it uses. Therefore we would have to resort to proving the soundness or completeness of the function as a whole.
+  \item In addition to that, the third approach uses \texttt{search}, which, as discussed before, contains both an unreachable branch and an additional numerical parameter to allow for general recursion. This, as well as any other way of dealing with those two problems, makes it much harder to prove any properties about it.
+\end{enumerate}
+
+As a result of these problems, we decided to restrict our proofs in several ways:
 \begin{itemize}
+  \item We only reason about the two naive solutions. More specifically, since these have already been proven to be correct, we decided to prove the equivalence of the two solutions, following Bird's proof in the paper. Since the first version is trivially complete (since it generates all possible solutions and throws out the incorrect ones), this would show that the second version is complete as well.
   \item Instead of allowing arbitrary Ascii characters for cell values, a dedicated type has been introduced. This was done hoping the restriction would come in handy later on but has not been found particularly useful after all since reasoning about individual cells was not performed.
-  \item Vectors of fixed length have been used instead of a loose list-of-lists representation for boards. This approach worked well in Agda for the two naive approaches, but using dependent types along with recursion turned out to be too much of an effort in Coq which is why the Vector implementation has only been completed in Agda.
-  \item A similar situation arose when using Subtyping in Coq: it is very hard to write down exact specifications that are also met under recursion criteria, and then many goals are generated even for the basic functions at the core of the solver. Again the fact that specifications hold mostly on higher abstraction levels only since the component functions are rather versatile in their applications made it hard to define properties for every function of the non-trivial solver.
-\end{itemize}
+  \item We use vectors of fixed length instead of a loose list-of-lists representation for boards. As discussed above, \texttt{SudokuVector.v} contains an implementation of the two naive solvers. This implementation is, however, incomplete, because it was impossible to write \texttt{boxes} in Coq, which is central to the program. More specifically, we did not succeed in writing the function \texttt{groupBy} in a way that Coq's type checker would accept. Since Agda is known to be better at handling dependent types, we implemented both versions with vectors in Agda (successfully). 
+\end{itemize} 
+
+While trying to prove properties of the new implementations, we soon discovered that Coq's ability to reason about dependently typed values is quite limited. When performing induction on a board (i.e. a vector of vectors of cell values, with both vectors having length \texttt{boardsize}), for example, Coq generated a case for an empty vector, although \texttt{boardsize} was defined as 9, and the vector therefore could not be empty. After unfolding the definition of \texttt{boardsize}, however, Coq completely refused to destruct the board. This and some other problems convinced us that it would be easier to use Agda for our main proof.
+
+
+
+Intuitively the involution property holds, but formally proving it in Coq turned out to be not feasible which is why this part has been implemented in Agda. However, the general case for \(N^2 \times N^2\) puzzles could not be considered either, instead specific proofs for \(N = 3\) have been formulated. The complexity of proving properties of these core functions of the solver gives an indication about how complex reasoning about properties of the overall solver will be.
+
+MARCO
+
+
 
 % most basic functions are already ridiculously complex: cols, boxes
 % no meaningful induction over boards
