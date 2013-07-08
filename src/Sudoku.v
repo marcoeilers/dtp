@@ -319,4 +319,24 @@ Proof.
   (* TODO *)
 Admitted.
 
+Theorem naive_all_correct : forall (b:board),
+  all correct (sudoku_naive b) = true.
+Proof.
+  intros. unfold sudoku_naive. induction (mcp (choices b)).
+    reflexivity.
+    simpl. remember (correct a) as cora; destruct cora.
+      unfold all. rewrite <- Heqcora. apply IHl.
+      apply IHl.
+Qed.
+
+Theorem naive_2_all_correct : forall (b:board),
+  all correct (sudoku_naive_2 b) = true.
+Proof.
+  intros. unfold sudoku_naive_2. induction (mcp (prune (choices b))).
+    reflexivity.
+    simpl. remember (correct a) as cora; destruct cora.
+      unfold all. rewrite <- Heqcora. apply IHl.
+      apply IHl.
+Qed.
+
 End Sudoku.
