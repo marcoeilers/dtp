@@ -177,6 +177,35 @@ prune cs = pruneBy boxs (pruneBy cols (pruneBy rows cs))
 sudokuNaive2 : Board -> L.List Board
 sudokuNaive2 b = L.filter correct (mcp (prune (choices b)))
 
+almostSolvedBoard : Board 
+almostSolvedBoard =
+  ((2 ∷ 4 ∷ 9 ∷ 5 ∷ 7 ∷ 1 ∷ 6 ∷ 3 ∷ 8 ∷ []) ∷ 
+   (8 ∷ 0 ∷ 1 ∷ 4 ∷ 3 ∷ 2 ∷ 9 ∷ 7 ∷ 5 ∷ []) ∷
+   (5 ∷ 7 ∷ 0 ∷ 9 ∷ 8 ∷ 6 ∷ 1 ∷ 4 ∷ 2 ∷ []) ∷
+   (7 ∷ 2 ∷ 5 ∷ 0 ∷ 9 ∷ 8 ∷ 4 ∷ 1 ∷ 3 ∷ []) ∷
+   (6 ∷ 9 ∷ 8 ∷ 1 ∷ 0 ∷ 3 ∷ 2 ∷ 5 ∷ 7 ∷ []) ∷
+   (3 ∷ 1 ∷ 4 ∷ 7 ∷ 2 ∷ 5 ∷ 8 ∷ 6 ∷ 9 ∷ []) ∷
+   (9 ∷ 3 ∷ 7 ∷ 8 ∷ 1 ∷ 4 ∷ 5 ∷ 2 ∷ 6 ∷ []) ∷
+   (1 ∷ 5 ∷ 2 ∷ 3 ∷ 6 ∷ 9 ∷ 7 ∷ 8 ∷ 4 ∷ []) ∷
+   (4 ∷ 8 ∷ 6 ∷ 2 ∷ 5 ∷ 7 ∷ 3 ∷ 9 ∷ 1 ∷ []) ∷ [])
+
+
+solvedBoard : Board 
+solvedBoard =
+  ((2 ∷ 4 ∷ 9 ∷ 5 ∷ 7 ∷ 1 ∷ 6 ∷ 3 ∷ 8 ∷ []) ∷ 
+   (8 ∷ 6 ∷ 1 ∷ 4 ∷ 3 ∷ 2 ∷ 9 ∷ 7 ∷ 5 ∷ []) ∷
+   (5 ∷ 7 ∷ 3 ∷ 9 ∷ 8 ∷ 6 ∷ 1 ∷ 4 ∷ 2 ∷ []) ∷
+   (7 ∷ 2 ∷ 5 ∷ 6 ∷ 9 ∷ 8 ∷ 4 ∷ 1 ∷ 3 ∷ []) ∷
+   (6 ∷ 9 ∷ 8 ∷ 1 ∷ 4 ∷ 3 ∷ 2 ∷ 5 ∷ 7 ∷ []) ∷
+   (3 ∷ 1 ∷ 4 ∷ 7 ∷ 2 ∷ 5 ∷ 8 ∷ 6 ∷ 9 ∷ []) ∷
+   (9 ∷ 3 ∷ 7 ∷ 8 ∷ 1 ∷ 4 ∷ 5 ∷ 2 ∷ 6 ∷ []) ∷
+   (1 ∷ 5 ∷ 2 ∷ 3 ∷ 6 ∷ 9 ∷ 7 ∷ 8 ∷ 4 ∷ []) ∷
+   (4 ∷ 8 ∷ 6 ∷ 2 ∷ 5 ∷ 7 ∷ 3 ∷ 9 ∷ 1 ∷ []) ∷ [])
+
+-- Uncomment this to test the solver with the almost solved board
+-- solvedBoardProof : sudokuNaive2 almostSolvedBoard == L._∷_ solvedBoard L.[]
+-- solvedBoardProof = Refl
+
 -- Proof of equivalence
 
 -- Some type abbreviations 
