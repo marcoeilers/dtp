@@ -74,7 +74,7 @@ The naive approach then computes all possible boards using \texttt{mcp} and \tex
 
 The second approach improves on the first one as described before: the only difference is that the generated choices considered during the MCP computation are pruned first. This is done by \texttt{delete}'ing all values from possible cell values for blank cells that are already \texttt{fixed} (i.e. are singleton lists and thus the only remaining choice for that cell) in the surrounding region (row, column or box). It is notable that this relatively simple adaption introduces quite some complexity to the solver. The example call for this approach is performed on the same simple board for the same reasons as before.
 
-The remainder of the file is devoted to the third approach. It is best to look at the implementation top-down, i.e. consider \texttt{sudoku} first and then look at the ingredients by scrolling up again. Since the generated solution is a (usually a single-element) list of boards of single cell value list it is necessary to extract these using nested \texttt{map hd} applications. Note that \texttt{Blank} is only given as a type indicator for \texttt{hd} and should never be used since the application is on completely solved boards without blank cells.
+Most of the remainder of the file is devoted to the third approach. It is best to look at the implementation top-down, i.e. consider \texttt{sudoku} first and then look at the ingredients by scrolling up again. Since the generated solution is a (usually a single-element) list of boards of single cell value list it is necessary to extract these using nested \texttt{map hd} applications. Note that \texttt{Blank} is only given as a type indicator for \texttt{hd} and should never be used since the application is on completely solved boards without blank cells.
 
 \texttt{search} performs the actual work of this approach to solving Sudokus since it identifies a cell with fewest number of possible choices and \texttt{expand}s on it. Each expansion is pruned first to increase the number of fixed cells that will not be included in the next expansion. Since structural recursion on the \texttt{matrix\_choices} is impossible in this case (the recursive call is in the lambda expression for \texttt{map}) and well founded relations are very hard to define an artificial natural number argument has been introduced on which structural recursion is performed.
 
@@ -84,16 +84,20 @@ One alternative to the artificial natural number parameter could be to consider 
 
 Inside \texttt{search} there are three possible sub-branches (in the non-impossible branch):
 \begin{enumerate}
-  \item The given choices are blocked: there are duplicates or blank cells in the solution, which is thus invalid.
-  \item There are only single element lists of cell values in the board: there is a solution and it can be returned as such.
+  \item The given choices are \textit{blocked}: there are duplicates or blank cells in the solution, which is thus invalid.
+  \item There are only single element lists of cell values in the board: this is a solution and it can be returned as such.
   \item The board is not solved yet: generate more choices by expanding on the cell with fewest possible choices and recurse on each pruned choice.
 \end{enumerate}
 
-The second major ingredient is \texttt{expand}. First the number of fewest choices in the current configuration is determined and later used to identify a cell that is expanded upon. This is done by breaking the board in two parts, the first row of the second one containing the desired cell. Next, this row is broken into two again, this time breaking at the cell with fewest number of choices. Based on this splitting new overall boards are generated, each one with a different fixed value for that cell.
+The second major ingredient is \texttt{expand}. First the number of fewest choices in the current configuration is determined and later used to identify a cell that is expanded upon. This is done by \texttt{break}'ing the board in two parts, the first row of the second one containing the desired cell. Next, this row is broken into two again, this time \texttt{break}'ing at the cell with fewest number of choices. Based on this splitting new overall boards are generated, each one with a different fixed value for that cell.
 
 \texttt{best} is used to assess that a given list of possible choices is indeed the one with fewest (\(m\)) entries. \texttt{minchoice} returns the length of the shortest list of possible choices (but greater than 1, since that would correspond to a fixed cell) to determine the current minimum number of choices for all cells.
 
 Despite being quite complex, \texttt{sudoku} is able to solve a regular board in a matter of seconds by not exploring invalid solutions too much.
+
+An implementation using general recursion by defining a decreasing measure on the remaining choices after each recursive call follows. Note that the generated proof obligation is admitted as there is no direct relation of the recursive arguments to \texttt{search'} reflected in the context (as correctly reported by Coq when using the regular \texttt{Fixpoint} since the recursive call is not applied to a proper structural sub-term).
+
+The implementation is concluded by two trivial correctness theorems (see section~\ref{sec:reas}).
 
 \subsection{SudokuVector.v}
 An incomplete implementation of the naive solvers which uses \texttt{Vector}s can be found in the file \texttt{SudokuVector.v}. It contains no executable Sudoku solver and is mainly included for completeness. The reasons for starting and abandoning this implementation will be explained below.
